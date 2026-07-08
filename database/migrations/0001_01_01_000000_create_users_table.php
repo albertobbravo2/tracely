@@ -8,6 +8,10 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
+     *
+     * Creates the three core auth tables: `users` for accounts,
+     * `password_reset_tokens` for the forgot-password flow, and
+     * `sessions` for server-side session storage.
      */
     public function up(): void
     {
@@ -21,12 +25,16 @@ return new class extends Migration
             $table->timestamps();
         });
 
+        // One-time tokens emailed to users for the "forgot password" flow,
+        // looked up by email and expiring after auth.passwords.*.expire minutes.
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');
             $table->timestamp('created_at')->nullable();
         });
 
+        // Backs SESSION_DRIVER=database: one row per active session, keyed by
+        // session ID, holding the serialized payload plus request metadata.
         Schema::create('sessions', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->foreignId('user_id')->nullable()->index();
