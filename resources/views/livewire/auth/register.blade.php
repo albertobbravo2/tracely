@@ -19,6 +19,19 @@
                 :placeholder="__('Full name')"
             />
 
+            <!-- País -->
+            <flux:select
+                name="country"
+                wire:model='country'
+                :placeholder="__('Full name')"
+                :label="__('Country')"
+                >
+
+                <flux:select.option> España </flux:select.option>
+                <flux:select.option> República Dominicana </flux:select.option>
+            </flux:select>
+
+
             <!-- Email Address -->
             <flux:input
                 name="email"
