@@ -26,6 +26,32 @@
     --color-accent: var(--color-neutral-800);
     --color-accent-content: var(--color-neutral-800);
     --color-accent-foreground: var(--color-white);
+
+    --color-brand-navy: #0b1f4b;
+
+    /* Azul — principal (marca, botones, header) */
+    --color-azul-900: #042C53;
+    --color-azul-800: #0C447C;
+    --color-azul-600: #185FA5;
+    --color-azul-400: #378ADD;
+    --color-azul-200: #85B7EB;
+    --color-azul-100: #B5D4F4;
+    --color-azul-050: #E6F1FB;
+
+    /* Verde — estados de confirmación (entregado / completado) */
+    --color-ok-fuerte: #0F6E56;
+    --color-ok: #1D9E75;
+    --color-ok-claro: #5DCAA5;
+    --color-ok-fondo: #E1F5EE;
+
+    /* Gris — interfaz y pasos pendientes */
+    --color-gris-900: #2C2C2A;
+    --color-gris-600: #5F5E5A;
+    --color-gris-400: #888780;
+    --color-gris-200: #D3D1C7;
+    --color-gris-050: #F1EFE8;
+
+    --color-blanco: #FFFFFF;
 }
 
 @layer theme {
