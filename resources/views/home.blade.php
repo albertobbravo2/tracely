@@ -8,21 +8,9 @@
             {{ __('Ingresa tu número de guía para ver el estado en tiempo real') }}
         </flux:text>
 
-        <form action="#" method="POST" class="mx-auto mt-6 flex max-w-xl items-center gap-3">
-            <flux:input
-                name="tracking_number"
-                placeholder="RY-4820-1174-MX"
-                class="flex-1"
-                class:input="!border-transparent !bg-blanco !text-gris-900 !shadow-none placeholder:!text-gris-400"
-            />
-            <flux:button
-                type="submit"
-                variant="primary"
-                class="shrink-0 px-6 font-semibold [--color-accent-foreground:var(--color-white)] [--color-accent:var(--color-brand-navy)]"
-            >
-                {{ __('Buscar') }}
-            </flux:button>
-        </form>
+        <div class="mt-6">
+            <livewire:searchfield />
+        </div>
     </div>
 
     @php
