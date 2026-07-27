@@ -1,0 +1,37 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+use App\Enums\ShipmentStatus;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('shipments', function (Blueprint $table) {
+            $table->id();
+            $table->string('tracking_number')->unique();
+            //determinar la estructura de la bd (sender_id) en reunión
+            $table->foreignId('sender_id')->constrained('users')->cascadeOnDelete();
+            $table->string('receiver_name');
+            $table->string('origin');
+            $table->string('destination');
+            $table->string('estimated_delivery_date');
+            $table->string('status')->default(ShipmentStatus::Pendiente->value);
+
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('shipments');
+    }
+};
