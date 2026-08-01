@@ -24,6 +24,8 @@ return new class extends Migration
             $table->string('status')->default(ShipmentStatus::Pendiente->value);
 
             $table->timestamps();
+
+            $table->index('tracking_number');
         });
     }
 

@@ -21,8 +21,6 @@ return new class extends Migration
             $table->timestamp('recorded_at');
 
             $table->timestamps();
-
-            $table->index(['shipment_id', 'recorded_at']);
         });
     }
 
