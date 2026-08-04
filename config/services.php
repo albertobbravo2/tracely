@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'internal_api' => [
+        // Host desde el que la propia app se alcanza a sí misma. Dentro de Sail,
+        // APP_URL usa el puerto publicado al host (ej. 8080), que no es accesible
+        // desde dentro del contenedor: ahí siempre se escucha en el puerto 80.
+        'url' => env('APP_INTERNAL_URL', 'http://localhost'),
+    ],
+
 ];
