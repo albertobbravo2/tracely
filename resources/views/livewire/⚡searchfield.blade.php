@@ -16,7 +16,7 @@ new class extends Component
     public ?string $errorMessage = null;
 
     /**
-     * Consultar la API de rastreo con el número de guía introducido.
+     * Consultar la API interna de envíos con el número de guía introducido.
      */
     public function search(): void
     {
@@ -25,16 +25,13 @@ new class extends Component
         $this->shipment = null;
         $this->errorMessage = null;
 
-        $request = Http::acceptJson()
-            ->timeout(10)
-            ->baseUrl(config('services.tracking.url'));
-
-        if ($key = config('services.tracking.key')) {
-            $request->withToken($key);
-        }
+        $path = route('shipments.show', ['shipment' => trim($this->tracking_number)], absolute: false);
 
         try {
-            $response = $request->get('shipments/'.trim($this->tracking_number));
+            $response = Http::acceptJson()
+                ->timeout(10)
+                ->baseUrl(config('services.internal_api.url'))
+                ->get($path);
         } catch (ConnectionException) {
             $this->errorMessage = __('No pudimos conectar con el servicio de rastreo. Inténtalo de nuevo en unos segundos.');
 
@@ -88,6 +85,11 @@ new class extends Component
 
         @if ($errorMessage)
             <flux:text class="text-gris-600 dark:text-azul-100">{{ $errorMessage }}</flux:text>
+        @endif
+
+        @if ($shipment)
+            <flux:text class="mb-1 text-gris-600 dark:text-azul-100">{{ __('Respuesta de la API') }}</flux:text>
+            <pre class="overflow-x-auto rounded-lg border border-gris-200 bg-gris-050 p-4 text-xs text-gris-900 dark:border-azul-800 dark:bg-azul-900 dark:text-azul-100">{{ json_encode($shipment, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
         @endif
     </div>
 </div>
