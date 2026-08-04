@@ -16,7 +16,7 @@ return new class extends Migration
             $table->id();
             $table->string('tracking_number')->unique();
             //determinar la estructura de la bd (sender_id) en reunión
-            $table->foreignId('sender_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('sender_id')->constrained('users')->cascadeOnDelete()->nullable(); //borrar ->nullable() en producción
             $table->string('receiver_name');
             $table->string('origin');
             $table->string('destination');
