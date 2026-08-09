@@ -1,12 +1,25 @@
 <?php
 
 use App\Http\Controllers\Api\ShipmentController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+Route::get('shipments/{shipment:tracking_number}', [ShipmentController::class, 'show'])
+    ->name('shipments.show');
 
-Route::apiResource('shipments', ShipmentController::class)
-    ->parameters(['shipments' => 'shipment:tracking_number']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('shipments', [ShipmentController::class, 'index'])
+        ->middleware('permission:ver pedido,sanctum')
+        ->name('shipments.index');
+
+    Route::post('shipments', [ShipmentController::class, 'store'])
+        ->middleware('permission:crear pedido,sanctum')
+        ->name('shipments.store');
+
+    Route::match(['put', 'patch'], 'shipments/{shipment:tracking_number}', [ShipmentController::class, 'update'])
+        ->middleware('permission:editar pedido,sanctum')
+        ->name('shipments.update');
+
+    Route::delete('shipments/{shipment:tracking_number}', [ShipmentController::class, 'destroy'])
+        ->middleware('permission:eliminar pedido,sanctum')
+        ->name('shipments.destroy');
+});

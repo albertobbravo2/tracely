@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreShipmentRequest;
 use App\Http\Requests\UpdateShipmentRequest;
 use App\Models\Shipment;
+use Illuminate\Http\Request;
 
 class ShipmentController extends Controller
 {
@@ -28,8 +29,20 @@ class ShipmentController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Shipment $shipment)
+    public function show(Request $request, Shipment $shipment)
     {
+        // Sin token válido solo se exponen los datos públicos de seguimiento,
+        // sin histórico ni datos del remitente/destinatario.
+        if (! $request->user('sanctum')) {
+            return response()->json($shipment->only([
+                'tracking_number',
+                'status',
+                'origin',
+                'destination',
+                'estimated_delivery_date',
+            ]));
+        }
+
         return response()->json(
             $shipment->load(['histories' => fn ($query) => $query->orderBy('recorded_at')])
         );
