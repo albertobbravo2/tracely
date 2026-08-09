@@ -8,84 +8,8 @@
             {{ __('Ingresa tu número de guía para ver el estado en tiempo real') }}
         </flux:text>
 
-        <div class="mt-6">
+        <div class="mt-6 pb-10">
             <livewire:searchfield />
-        </div>
-    </div>
-
-    @php
-        $shipment = [
-            'tracking_number' => 'RY-4820-1174-MX',
-            'status' => __('En tránsito'),
-            'origin' => 'Guadalajara, JAL',
-            'destination' => 'Monterrey, NL',
-            'eta' => __('Hoy, 18:00'),
-        ];
-
-        $timeline = [
-            ['title' => __('Paquete recogido'), 'meta' => '21 jul · 09:14 · Guadalajara', 'state' => 'done'],
-            ['title' => __('En centro de distribución'), 'meta' => '22 jul · 02:40 · Zapopan', 'state' => 'done'],
-            ['title' => __('En ruta de entrega'), 'meta' => '22 jul · 11:05 · Monterrey', 'state' => 'active'],
-            ['title' => __('Entregado'), 'meta' => __('Pendiente'), 'state' => 'pending'],
-        ];
-    @endphp
-
-    <div class="mx-auto max-w-xl px-6 py-10">
-        <div class="rounded-2xl border border-gris-200 bg-blanco p-6 shadow-sm sm:p-8">
-            <div class="flex items-start justify-between gap-4">
-                <div>
-                    <flux:text class="text-gris-600">{{ __('Guía') }}</flux:text>
-                    <flux:heading size="lg" class="text-gris-900">{{ $shipment['tracking_number'] }}</flux:heading>
-                </div>
-
-                <flux:badge rounded class="shrink-0 !bg-ok-fondo !text-ok-fuerte">
-                    {{ $shipment['status'] }}
-                </flux:badge>
-            </div>
-
-            <div class="mt-6 grid grid-cols-3 gap-4">
-                <div>
-                    <flux:text class="text-gris-600">{{ __('Origen') }}</flux:text>
-                    <p class="font-semibold text-gris-900">{{ $shipment['origin'] }}</p>
-                </div>
-                <div>
-                    <flux:text class="text-gris-600">{{ __('Destino') }}</flux:text>
-                    <p class="font-semibold text-gris-900">{{ $shipment['destination'] }}</p>
-                </div>
-                <div>
-                    <flux:text class="text-gris-600">{{ __('Entrega estimada') }}</flux:text>
-                    <p class="font-semibold text-ok">{{ $shipment['eta'] }}</p>
-                </div>
-            </div>
-
-            <hr class="mt-6 border-gris-200">
-
-            <ol class="mt-6 space-y-6">
-                @foreach ($timeline as $step)
-                    <li class="relative flex gap-4">
-                        @unless ($loop->last)
-                            <span class="absolute top-4 start-[6.5px] h-full w-px bg-gris-200"></span>
-                        @endunless
-
-                        <span @class([
-                            'relative z-10 mt-1 size-3.5 shrink-0 rounded-full',
-                            'bg-ok' => $step['state'] === 'done',
-                            'bg-azul-600' => $step['state'] === 'active',
-                            'border-2 border-gris-200 bg-blanco' => $step['state'] === 'pending',
-                        ])></span>
-
-                        <div>
-                            <p @class([
-                                'font-semibold',
-                                'text-gris-900' => $step['state'] === 'done',
-                                'text-azul-600' => $step['state'] === 'active',
-                                'text-gris-400' => $step['state'] === 'pending',
-                            ])>{{ $step['title'] }}</p>
-                            <p class="text-sm text-gris-600">{{ $step['meta'] }}</p>
-                        </div>
-                    </li>
-                @endforeach
-            </ol>
         </div>
     </div>
 </x-layouts::app>
