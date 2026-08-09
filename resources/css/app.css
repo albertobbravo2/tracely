@@ -3,7 +3,6 @@
 
 @source '../views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';
 @source '../../vendor/livewire/flux/stubs/**/*.blade.php';
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -43,6 +42,12 @@
     --color-ok: #1D9E75;
     --color-ok-claro: #5DCAA5;
     --color-ok-fondo: #E1F5EE;
+
+    /* Rojo — incidencias y estados de error */
+    --color-alerta-fuerte: #8E2C22;
+    --color-alerta: #C4402F;
+    --color-alerta-claro: #E89285;
+    --color-alerta-fondo: #FBEAE7;
 
     /* Gris — interfaz y pasos pendientes */
     --color-gris-900: #2C2C2A;
