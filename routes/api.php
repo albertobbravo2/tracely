@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\ShipmentController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('shipments/{shipment:tracking_number}', [ShipmentController::class, 'show'])
+    ->middleware('throttle:show-shipment')
     ->name('shipments.show');
 
 Route::middleware('auth:sanctum')->group(function () {
