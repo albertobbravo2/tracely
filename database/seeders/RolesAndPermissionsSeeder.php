@@ -24,6 +24,10 @@ class RolesAndPermissionsSeeder extends Seeder
         $superadministrador = Role::create(['name' => 'superadministrador']);
 
         $empleado = [$agente, $administrador, $superadministrador ];
+        $admins = [$administrador, $superadministrador];
+        // Gestionar empresas es una acción de plataforma: el administrador está
+        // acotado a su propia empresa, así que no puede crear ni tocar otras.
+        $superadmin = [$superadministrador];
         // PERMISOS
 
         // shipment
@@ -39,11 +43,11 @@ class RolesAndPermissionsSeeder extends Seeder
         // Permission::create(["name" => "ver usuario"])->syncRoles($todos);
         Permission::create(['name' => 'editar usuario'])->syncRoles($empleado);
         Permission::create(['name' => 'eliminar usuario'])->syncRoles($empleado);
-        // role
-        Permission::create(['name' => 'crear rol'])->syncRoles($administrador);
-        Permission::create(['name' => 'ver rol'])->syncRoles($empleado);
-        Permission::create(['name' => 'editar rol'])->syncRoles($administrador);
-        Permission::create(['name' => 'eliminar rol'])->syncRoles($administrador);
+        // empresa
+        Permission::create(['name' => 'crear empresa'])->syncRoles($superadmin);
+        Permission::create(['name' => 'ver empresas'])->syncRoles($superadmin);
+        Permission::create(['name' => 'editar empresa'])->syncRoles($superadmin);
+        Permission::create(['name' => 'eliminar empresa'])->syncRoles($superadmin);
         // document
         Permission::create(['name' => 'crear documento'])->syncRoles($empleado);
         // Permission::create(["name" => "ver documento"])->syncRoles($todos);
@@ -52,9 +56,10 @@ class RolesAndPermissionsSeeder extends Seeder
         // dashboard
         // Permission::create(["name" => "ver dashboard"])->syncRoles($cliente);
 
-        // Asignar permisos a roles
-        $agente->givePermissionTo('crear pedido');
-        $administrador->givePermissionTo(Permission::all());
+        // El superadministrador es el único rol sin restricciones: se le concede
+        // todo lo declarado arriba, incluida la gestión de empresas.
+        // El administrador se queda con lo que le hayan dado los syncRoles().
+        $superadministrador->givePermissionTo(Permission::all());
 
     }
 }
