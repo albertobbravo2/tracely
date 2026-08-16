@@ -25,8 +25,8 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $empleado = [$agente, $administrador, $superadministrador ];
         $admins = [$administrador, $superadministrador];
-        // Gestionar empresas es una acción de plataforma: el administrador está
-        // acotado a su propia empresa, así que no puede crear ni tocar otras.
+        // Gestionar empresas es una acción de plataforma, no de una empresa
+        // concreta: solo el superadministrador.
         $superadmin = [$superadministrador];
         // PERMISOS
 
@@ -43,7 +43,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // Permission::create(["name" => "ver usuario"])->syncRoles($todos);
         Permission::create(['name' => 'editar usuario'])->syncRoles($empleado);
         Permission::create(['name' => 'eliminar usuario'])->syncRoles($empleado);
-        // empresa
+        // company
         Permission::create(['name' => 'crear empresa'])->syncRoles($superadmin);
         Permission::create(['name' => 'ver empresas'])->syncRoles($superadmin);
         Permission::create(['name' => 'editar empresa'])->syncRoles($superadmin);

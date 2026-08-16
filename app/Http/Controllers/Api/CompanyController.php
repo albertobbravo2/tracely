@@ -3,19 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Enterprise;
+use App\Models\Company;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
-class EnterpriseController extends Controller
+class CompanyController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
     public function index(): JsonResponse
     {
-        return response()->json(Enterprise::paginate(15));
+        return response()->json(Company::paginate(15));
     }
 
     /**
@@ -25,27 +25,27 @@ class EnterpriseController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'slug' => ['required', 'string', 'max:255', 'unique:enterprises,slug'],
+            'slug' => ['required', 'string', 'max:255', 'unique:companies,slug'],
             'contact_email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
             'is_active' => ['boolean'],
         ]);
 
-        return response()->json(Enterprise::create($data), 201);
+        return response()->json(Company::create($data), 201);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Enterprise $enterprise): JsonResponse
+    public function show(Company $company): JsonResponse
     {
-        return response()->json($enterprise);
+        return response()->json($company);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Enterprise $enterprise): JsonResponse
+    public function update(Request $request, Company $company): JsonResponse
     {
         $data = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:255'],
@@ -54,24 +54,24 @@ class EnterpriseController extends Controller
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('enterprises', 'slug')->ignore($enterprise),
+                Rule::unique('companies', 'slug')->ignore($company),
             ],
             'contact_email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
             'is_active' => ['boolean'],
         ]);
 
-        $enterprise->update($data);
+        $company->update($data);
 
-        return response()->json($enterprise);
+        return response()->json($company);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Enterprise $enterprise): JsonResponse
+    public function destroy(Company $company): JsonResponse
     {
-        $enterprise->delete();
+        $company->delete();
 
         return response()->json(status: 204);
     }

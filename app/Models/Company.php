@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use Database\Factories\EnterpriseFactory;
+use Database\Factories\CompanyFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -26,9 +26,9 @@ use Illuminate\Support\Carbon;
     'phone',
     'is_active',
 ])]
-class Enterprise extends Model
+class Company extends Model
 {
-    /** @use HasFactory<EnterpriseFactory> */
+    /** @use HasFactory<CompanyFactory> */
     use HasFactory;
 
     /**
