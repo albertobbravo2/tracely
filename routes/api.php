@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\ShipmentController;
+use App\Http\Controllers\Api\ShipmentHistoryController;
+use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('shipments/{shipment:tracking_number}', [ShipmentController::class, 'show'])
@@ -73,4 +75,34 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('documents/{document}', [DocumentController::class, 'destroy'])
         ->middleware('permission:eliminar documento')
         ->name('documents.destroy');
+
+    // El historial es un registro de auditoría: solo se lee y se añade, nunca
+    // se edita ni se borra un evento ya registrado.
+    Route::get('shipment-histories', [ShipmentHistoryController::class, 'index'])
+        ->name('shipment-histories.index');
+
+    Route::get('shipment-histories/{shipmentHistory}', [ShipmentHistoryController::class, 'show'])
+        ->name('shipment-histories.show');
+
+    Route::post('shipment-histories', [ShipmentHistoryController::class, 'store'])
+        ->middleware('permission:crear historial de pedido')
+        ->name('shipment-histories.store');
+
+    Route::get('users', [UserController::class, 'index'])
+        ->name('users.index');
+
+    Route::get('users/{user}', [UserController::class, 'show'])
+        ->name('users.show');
+
+    Route::post('users', [UserController::class, 'store'])
+        ->middleware('permission:crear usuario')
+        ->name('users.store');
+
+    Route::match(['put', 'patch'], 'users/{user}', [UserController::class, 'update'])
+        ->middleware('permission:editar usuario')
+        ->name('users.update');
+
+    Route::delete('users/{user}', [UserController::class, 'destroy'])
+        ->middleware('permission:eliminar usuario')
+        ->name('users.destroy');
 });

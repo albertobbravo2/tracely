@@ -34,14 +34,17 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'crear pedido'])->syncRoles($empleado);
         Permission::create(['name' => 'editar pedido'])->syncRoles($empleado);
         Permission::create(['name' => 'eliminar pedido'])->syncRoles($empleado);
+
         // shipment_history
         Permission::create(['name' => 'crear historial de pedido'])->syncRoles($empleado);
         // Permission::create(["name" => "ver historial de pedido"])->syncRoles($todos);
+
         // user
         Permission::create(['name' => 'crear usuario'])->syncRoles($empleado);
         // Permission::create(["name" => "ver usuario"])->syncRoles($todos);
         Permission::create(['name' => 'editar usuario'])->syncRoles($empleado);
         Permission::create(['name' => 'eliminar usuario'])->syncRoles($empleado);
+
         // company
         Permission::create(['name' => 'crear empresa'])->syncRoles($superadmin);
         Permission::create(['name' => 'ver empresas'])->syncRoles($superadmin);
