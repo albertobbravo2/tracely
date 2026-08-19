@@ -32,6 +32,7 @@ use Illuminate\Support\Carbon;
     'destination',
     'estimated_delivery_date',
     'status',
+    'company_id',
 ])]
 class Shipment extends Model
 {
