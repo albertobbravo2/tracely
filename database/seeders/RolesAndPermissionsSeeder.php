@@ -23,7 +23,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $administrador = Role::create(['name' => 'administrador']);
         $superadministrador = Role::create(['name' => 'superadministrador']);
 
-        $empleado = [$agente, $administrador, $superadministrador ];
+        $empleado = [$agente, $administrador, $superadministrador];
         $admins = [$administrador, $superadministrador];
         // Gestionar empresas es una acción de plataforma, no de una empresa
         // concreta: solo el superadministrador.
@@ -32,7 +32,6 @@ class RolesAndPermissionsSeeder extends Seeder
 
         // shipment
         Permission::create(['name' => 'crear pedido'])->syncRoles($empleado);
-        // Permission::create(["name" => "ver pedido"])->syncRoles($todos);
         Permission::create(['name' => 'editar pedido'])->syncRoles($empleado);
         Permission::create(['name' => 'eliminar pedido'])->syncRoles($empleado);
         // shipment_history

@@ -11,7 +11,6 @@ Route::get('shipments/{shipment:tracking_number}', [ShipmentController::class, '
 // El grupo autentica con sanctum; cada ruta solo declara el permiso que exige.
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('shipments', [ShipmentController::class, 'index'])
-        ->middleware('permission:ver pedido')
         ->name('shipments.index');
 
     Route::post('shipments', [ShipmentController::class, 'store'])
