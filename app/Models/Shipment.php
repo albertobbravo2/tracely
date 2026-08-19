@@ -15,7 +15,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property string $tracking_number
- * @property int $sender_id
+ * @property int|null $sender_id
  * @property string $receiver_name
  * @property string $origin
  * @property string $destination
