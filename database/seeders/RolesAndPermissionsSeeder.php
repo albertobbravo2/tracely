@@ -48,12 +48,11 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'editar empresa'])->syncRoles($superadmin);
         Permission::create(['name' => 'eliminar empresa'])->syncRoles($superadmin);
         // document
+        // Los documentos no son públicos como el seguimiento: solo empleados.
         Permission::create(['name' => 'crear documento'])->syncRoles($empleado);
-        // Permission::create(["name" => "ver documento"])->syncRoles($todos);
+        Permission::create(['name' => 'ver documento'])->syncRoles($empleado);
         Permission::create(['name' => 'editar documento'])->syncRoles($empleado);
         Permission::create(['name' => 'eliminar documento'])->syncRoles($empleado);
-        // dashboard
-        // Permission::create(["name" => "ver dashboard"])->syncRoles($cliente);
 
         // El superadministrador es el único rol sin restricciones: se le concede
         // todo lo declarado arriba, incluida la gestión de empresas.

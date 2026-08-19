@@ -38,6 +38,19 @@ return [
             'report' => false,
         ],
 
+        // Documentos de envío (facturas, despachos de aduana). Disco propio y
+        // no el `default` para que su privacidad no dependa de FILESYSTEM_DISK:
+        // apuntar el default a un bucket público expondría los documentos.
+        // `serve` queda desactivado a propósito — se sirven por el controlador,
+        // que sí pasa por el middleware de permisos.
+        'documents' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/documents'),
+            'serve' => false,
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

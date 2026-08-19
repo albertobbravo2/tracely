@@ -68,4 +68,14 @@ class Shipment extends Model
     {
         return $this->hasMany(ShipmentHistory::class);
     }
+
+    /**
+     * Documentos adjuntos a este envío.
+     *
+     * @return HasMany<Document, $this>
+     */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(Document::class);
+    }
 }

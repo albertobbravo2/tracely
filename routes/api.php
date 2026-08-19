@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\CompanyController;
+use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\ShipmentController;
 use Illuminate\Support\Facades\Route;
 
@@ -46,4 +47,30 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('companies/{company}', [CompanyController::class, 'destroy'])
         ->middleware('permission:eliminar empresa')
         ->name('companies.destroy');
+
+    // Los documentos de un envío no tienen endpoint público: a diferencia del
+    // seguimiento, contienen facturas y despachos de aduana.
+    Route::get('documents', [DocumentController::class, 'index'])
+        ->middleware('permission:ver documento')
+        ->name('documents.index');
+
+    Route::get('documents/{document}', [DocumentController::class, 'show'])
+        ->middleware('permission:ver documento')
+        ->name('documents.show');
+
+    Route::get('documents/{document}/download', [DocumentController::class, 'download'])
+        ->middleware('permission:ver documento')
+        ->name('documents.download');
+
+    Route::post('documents', [DocumentController::class, 'store'])
+        ->middleware('permission:crear documento')
+        ->name('documents.store');
+
+    Route::match(['put', 'patch'], 'documents/{document}', [DocumentController::class, 'update'])
+        ->middleware('permission:editar documento')
+        ->name('documents.update');
+
+    Route::delete('documents/{document}', [DocumentController::class, 'destroy'])
+        ->middleware('permission:eliminar documento')
+        ->name('documents.destroy');
 });
