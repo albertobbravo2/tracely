@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\ShipmentController;
 use App\Http\Controllers\Api\ShipmentHistoryController;
+use App\Http\Controllers\Api\ShipmentUserController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -29,6 +30,14 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('permission:eliminar pedido')
         ->name('shipments.destroy');
 
+    // El usuario final añade o quita de su lista un envío cuyo número de
+    // seguimiento conoce. Sin permiso a propósito: los clientes no tienen rol,
+    // así que exigir uno les dejaría fuera de su propia funcionalidad.
+    Route::post('shipments/{shipment:tracking_number}/users', [ShipmentUserController::class, 'store'])
+        ->name('shipments.users.store');
+
+    Route::delete('shipments/{shipment:tracking_number}/users', [ShipmentUserController::class, 'destroy'])
+        ->name('shipments.users.destroy');
 
     // Las empresas no tienen endpoint público: gestionarlas es cosa del
     // superadministrador, que es el único rol con estos permisos.
@@ -105,7 +114,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('users/{user}', [UserController::class, 'show'])
         ->middleware('permission:ver usuario')
         ->name('users.show');
-
 
     Route::post('users', [UserController::class, 'store'])
         ->middleware('permission:crear usuario')
