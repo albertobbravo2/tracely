@@ -14,6 +14,7 @@ Route::get('shipments/{shipment:tracking_number}', [ShipmentController::class, '
 // El grupo autentica con sanctum; cada ruta solo declara el permiso que exige.
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('shipments', [ShipmentController::class, 'index'])
+        ->middleware('permission:ver pedido')
         ->name('shipments.index');
 
     Route::post('shipments', [ShipmentController::class, 'store'])
@@ -27,6 +28,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('shipments/{shipment:tracking_number}', [ShipmentController::class, 'destroy'])
         ->middleware('permission:eliminar pedido')
         ->name('shipments.destroy');
+
 
     // Las empresas no tienen endpoint público: gestionarlas es cosa del
     // superadministrador, que es el único rol con estos permisos.
@@ -76,23 +78,34 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('permission:eliminar documento')
         ->name('documents.destroy');
 
-    // El historial es un registro de auditoría: solo se lee y se añade, nunca
-    // se edita ni se borra un evento ya registrado.
     Route::get('shipment-histories', [ShipmentHistoryController::class, 'index'])
+        ->middleware('permission:ver historial de pedido')
         ->name('shipment-histories.index');
 
     Route::get('shipment-histories/{shipmentHistory}', [ShipmentHistoryController::class, 'show'])
+        ->middleware('permission:ver historial de pedido')
         ->name('shipment-histories.show');
 
     Route::post('shipment-histories', [ShipmentHistoryController::class, 'store'])
         ->middleware('permission:crear historial de pedido')
         ->name('shipment-histories.store');
 
+    Route::match(['put', 'patch'], 'shipment-histories/{shipmentHistory}', [ShipmentHistoryController::class, 'update'])
+        ->middleware('permission:editar historial de pedido')
+        ->name('shipment-histories.update');
+
+    Route::delete('shipment-histories/{shipmentHistory}', [ShipmentHistoryController::class, 'destroy'])
+        ->middleware('permission:eliminar historial de pedido')
+        ->name('shipment-histories.destroy');
+
     Route::get('users', [UserController::class, 'index'])
+        ->middleware('permission:ver usuario')
         ->name('users.index');
 
     Route::get('users/{user}', [UserController::class, 'show'])
+        ->middleware('permission:ver usuario')
         ->name('users.show');
+
 
     Route::post('users', [UserController::class, 'store'])
         ->middleware('permission:crear usuario')
