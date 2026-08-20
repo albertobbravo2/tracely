@@ -50,4 +50,35 @@ class ShipmentHistoryController extends Controller
     {
         return response()->json($shipmentHistory);
     }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * Corregir un evento mal registrado (una ubicación equivocada, una fecha
+     * mal tecleada). No se permite moverlo a otro envío: para eso se borra y
+     * se crea donde corresponda.
+     */
+    public function update(Request $request, ShipmentHistory $shipmentHistory): JsonResponse
+    {
+        $data = $request->validate([
+            'status' => ['sometimes', 'required', Rule::enum(ShipmentStatus::class)],
+            'location' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'recorded_at' => ['sometimes', 'required', 'date'],
+        ]);
+
+        $shipmentHistory->update($data);
+
+        return response()->json($shipmentHistory);
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(ShipmentHistory $shipmentHistory): JsonResponse
+    {
+        $shipmentHistory->delete();
+
+        return response()->json(status: 204);
+    }
 }
