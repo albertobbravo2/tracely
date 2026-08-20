@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Enums\ShipmentStatus;
+use Database\Factories\ShipmentHistoryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
@@ -26,6 +28,9 @@ use Illuminate\Support\Carbon;
 ])]
 class ShipmentHistory extends Model
 {
+    /** @use HasFactory<ShipmentHistoryFactory> */
+    use HasFactory;
+
     // formatear fecha
     protected function casts(): array
     {
