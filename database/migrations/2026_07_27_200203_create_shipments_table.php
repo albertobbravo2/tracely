@@ -1,9 +1,9 @@
 <?php
 
+use App\Enums\ShipmentStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use App\Enums\ShipmentStatus;
 
 return new class extends Migration
 {
@@ -15,7 +15,7 @@ return new class extends Migration
         Schema::create('shipments', function (Blueprint $table) {
             $table->id();
             $table->string('tracking_number')->unique();
-            $table->foreignId('sender_id')->constrained('users')->cascadeOnDelete()->nullable(); //borrar ->nullable() en producción
+            $table->foreignId('sender_id')->constrained('users')->cascadeOnDelete()->nullable(); // borrar ->nullable() en producción
             $table->string('receiver_name');
             $table->string('origin');
             $table->string('destination');
