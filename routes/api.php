@@ -8,7 +8,10 @@ use App\Http\Controllers\Api\ShipmentUserController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('shipments/{shipment:tracking_number}', [ShipmentController::class, 'show'])
+// Sin binding implícito a propósito: el controlador consulta Redis antes que
+// la base de datos, y el binding automático ya habría golpeado Postgres
+// antes de que el método se ejecutara siquiera.
+Route::get('shipments/{shipment}', [ShipmentController::class, 'show'])
     ->middleware('throttle:show-shipment')
     ->name('shipments.show');
 

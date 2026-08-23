@@ -27,6 +27,11 @@ class StoreShipmentRequest extends FormRequest
      * pedido, y lo pone el controlador con el usuario autenticado. Aceptarlo
      * aquí dejaría dar de alta envíos a nombre de otro usuario.
      *
+     * `history` es el primer evento del historial, opcional: quien da de alta
+     * el envío desde el backoffice lo manda en el mismo formulario y lo crea
+     * `ShipmentObserver::created()`. Si no viene, el envío nace sin historial
+     * (es el caso de las altas por API y de las factories).
+     *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
@@ -40,6 +45,11 @@ class StoreShipmentRequest extends FormRequest
             // Opcional: la columna ya tiene "pendiente" como valor por defecto.
             'status' => ['sometimes', 'required', Rule::enum(ShipmentStatus::class)],
             'company_id' => ['nullable', 'integer', 'exists:companies,id'],
+            'history' => ['sometimes', 'array'],
+            'history.status' => ['required_with:history', Rule::enum(ShipmentStatus::class)],
+            'history.location' => ['nullable', 'string', 'max:255'],
+            'history.description' => ['nullable', 'string'],
+            'history.recorded_at' => ['required_with:history', 'date'],
         ];
     }
 }

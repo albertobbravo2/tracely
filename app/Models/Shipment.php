@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Enums\ShipmentStatus;
+use App\Observers\ShipmentObserver;
 use Database\Factories\ShipmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -34,10 +36,24 @@ use Illuminate\Support\Carbon;
     'status',
     'company_id',
 ])]
+#[ObservedBy([ShipmentObserver::class])]
 class Shipment extends Model
 {
     /** @use HasFactory<ShipmentFactory> */
     use HasFactory;
+
+    /**
+     * Primer evento del historial, cuando el alta lo trae consigo.
+     *
+     * No es un atributo del modelo: es una propiedad PHP normal, así que
+     * Eloquent no la persiste ni la serializa. Solo existe para que el dato
+     * llegue desde el controlador hasta `ShipmentObserver::created()`, que es
+     * quien crea de verdad el `ShipmentHistory` — un observer recibe el modelo,
+     * no la request, y sin esto no tendría forma de ver esos campos.
+     *
+     * @var array<string, mixed>|null
+     */
+    public ?array $initialHistory = null;
 
     /**
      * Get the attributes that should be cast.

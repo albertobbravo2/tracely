@@ -6,8 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreShipmentRequest;
 use App\Http\Requests\UpdateShipmentRequest;
 use App\Models\Shipment;
+use App\Observers\ShipmentObserver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class ShipmentController extends Controller
 {
@@ -48,8 +52,10 @@ class ShipmentController extends Controller
      */
     public function store(StoreShipmentRequest $request): JsonResponse
     {
-        $shipment = Shipment::create([
-            ...$request->validated(),
+        $shipment = new Shipment([
+            // `history` no es una columna del envío: se excluye del fill y viaja
+            // aparte hasta el observer.
+            ...$request->safe()->except('history'),
             // Quien registra el pedido es siempre quien hace la petición.
             'sender_id' => $request->user()->id,
             // Si no se indica empresa, hereda la de quien lo registra; así un
@@ -57,18 +63,48 @@ class ShipmentController extends Controller
             'company_id' => $request->validated('company_id') ?? $request->user()->company_id,
         ]);
 
+        // El primer evento del historial lo crea `ShipmentObserver::created()`,
+        // que solo ve el modelo: por eso el dato se cuelga aquí antes de guardar.
+        $shipment->initialHistory = $request->validated('history');
+
+        $shipment->save();
+
         return response()->json($shipment, 201);
     }
 
     /**
      * Display the specified resource.
+     *
+     * `$shipment` llega como string (ver comentario en routes/api.php): primero
+     * se busca en Redis y solo se cae a Postgres si no hay nada cacheado. Solo
+     * los envíos "entregado" llegan a estar en caché (los escribe
+     * `ShipmentObserver`), así que un miss aquí es normal para el resto.
      */
-    public function show(Request $request, Shipment $shipment)
+    public function show(Request $request, string $shipment): JsonResponse
     {
+        $cached = $this->fromCache($shipment);
+
+        if ($cached !== null) {
+            // Mismo recorte público/privado que la rama de base de datos: la
+            // caché guarda el envío completo, y aquí se decide cuánto de eso
+            // le llega a la respuesta según haya o no sesión.
+            return response()->json(
+                $request->user('sanctum') ? $cached : Arr::only($cached, [
+                    'tracking_number',
+                    'status',
+                    'origin',
+                    'destination',
+                    'estimated_delivery_date',
+                ])
+            );
+        }
+
+        $model = Shipment::where('tracking_number', $shipment)->firstOrFail();
+
         // Sin token válido solo se exponen los datos públicos de seguimiento,
         // sin histórico ni datos del remitente/destinatario.
         if (! $request->user('sanctum')) {
-            return response()->json($shipment->only([
+            return response()->json($model->only([
                 'tracking_number',
                 'status',
                 'origin',
@@ -78,8 +114,28 @@ class ShipmentController extends Controller
         }
 
         return response()->json(
-            $shipment->load(['histories' => fn ($query) => $query->orderBy('recorded_at')])
+            $model->load(['histories' => fn ($query) => $query->orderBy('recorded_at')])
         );
+    }
+
+    /**
+     * Un fallo de Redis nunca debe tumbar la consulta pública: si la caché no
+     * responde, se registra y se sigue a Postgres como si hubiera sido un miss.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function fromCache(string $trackingNumber): ?array
+    {
+        try {
+            return Cache::store('redis')->get(ShipmentObserver::cacheKey($trackingNumber));
+        } catch (\Throwable $e) {
+            Log::warning('No se pudo leer la caché de Redis del envío.', [
+                'tracking_number' => $trackingNumber,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     /**
