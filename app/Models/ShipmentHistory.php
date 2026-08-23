@@ -7,6 +7,7 @@ use Database\Factories\ShipmentHistoryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
@@ -40,8 +41,12 @@ class ShipmentHistory extends Model
         ];
     }
 
-    // sacar historial de un pedido
-    public function shipment()
+    /**
+     * Envío al que pertenece este evento.
+     *
+     * @return BelongsTo<Shipment, $this>
+     */
+    public function shipment(): BelongsTo
     {
         return $this->belongsTo(Shipment::class);
     }

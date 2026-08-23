@@ -17,10 +17,14 @@ class DocumentController extends Controller
     public function index(Request $request): JsonResponse
     {
         $documents = Document::query()
+            // El listado del backoffice muestra el número de guía, no el id:
+            // sin el eager load cada fila sería una consulta aparte.
+            ->with('shipment:id,tracking_number')
             ->when(
                 $request->integer('shipment_id'),
                 fn ($query, $shipmentId) => $query->where('shipment_id', $shipmentId),
             )
+            ->latest('id')
             ->paginate(15);
 
         return response()->json($documents);

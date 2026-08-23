@@ -13,10 +13,34 @@ class ShipmentController extends Controller
 {
     /**
      * Display a listing of the resource.
+     *
+     * Los tres filtros son opcionales: sin ninguno devuelve la lista completa,
+     * igual que antes. `ilike` es de Postgres, que es la base de este proyecto.
      */
-    public function index()
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(Shipment::paginate(15));
+        $shipments = Shipment::query()
+            ->when(
+                $request->string('search')->trim()->value(),
+                fn ($query, string $search) => $query->where(
+                    fn ($query) => $query->where('tracking_number', 'ilike', "%{$search}%")
+                        ->orWhere('receiver_name', 'ilike', "%{$search}%")
+                        ->orWhere('origin', 'ilike', "%{$search}%")
+                        ->orWhere('destination', 'ilike', "%{$search}%"),
+                ),
+            )
+            ->when(
+                $request->string('status')->value(),
+                fn ($query, string $status) => $query->where('status', $status),
+            )
+            ->when(
+                $request->integer('company_id'),
+                fn ($query, int $companyId) => $query->where('company_id', $companyId),
+            )
+            ->latest('id')
+            ->paginate(15);
+
+        return response()->json($shipments);
     }
 
     /**

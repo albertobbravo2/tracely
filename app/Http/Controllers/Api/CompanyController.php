@@ -12,10 +12,25 @@ class CompanyController extends Controller
 {
     /**
      * Display a listing of the resource.
+     *
+     * El filtro es opcional: sin `search` devuelve la lista completa, igual
+     * que antes. `ilike` es de Postgres, que es la base de este proyecto.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(Company::paginate(15));
+        $companies = Company::query()
+            ->when(
+                $request->string('search')->trim()->value(),
+                fn ($query, string $search) => $query->where(
+                    fn ($query) => $query->where('name', 'ilike', "%{$search}%")
+                        ->orWhere('slug', 'ilike', "%{$search}%")
+                        ->orWhere('contact_email', 'ilike', "%{$search}%"),
+                ),
+            )
+            ->latest('id')
+            ->paginate(15);
+
+        return response()->json($companies);
     }
 
     /**

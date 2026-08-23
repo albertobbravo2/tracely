@@ -13,10 +13,26 @@ class UserController extends Controller
 {
     /**
      * Display a listing of the resource.
+     *
+     * Los roles vienen cargados porque el listado del backoffice muestra una
+     * columna con ellos y, sin el eager load, cada fila sería una consulta.
+     * `ilike` es de Postgres, que es la base de este proyecto.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(User::paginate(15));
+        $users = User::query()
+            ->with('roles:id,name')
+            ->when(
+                $request->string('search')->trim()->value(),
+                fn ($query, string $search) => $query->where(
+                    fn ($query) => $query->where('name', 'ilike', "%{$search}%")
+                        ->orWhere('email', 'ilike', "%{$search}%"),
+                ),
+            )
+            ->latest('id')
+            ->paginate(15);
+
+        return response()->json($users);
     }
 
     /**
@@ -39,7 +55,7 @@ class UserController extends Controller
      */
     public function show(User $user): JsonResponse
     {
-        return response()->json($user);
+        return response()->json($user->load('roles:id,name'));
     }
 
     /**
