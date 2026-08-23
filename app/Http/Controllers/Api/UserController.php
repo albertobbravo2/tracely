@@ -90,4 +90,23 @@ class UserController extends Controller
 
         return response()->json(status: 204);
     }
+
+    public function shipments(Request $request): JsonResponse
+    {
+        $user = User::findOrFail($request->route('user'));
+
+        return response()->json($user->shipments()->paginate(15));
+    }
+
+    public function company(User $user): JsonResponse
+    {
+        return response()->json($user->company);
+    }
+
+    public function myshipments(Request $request): JsonResponse
+    {
+        $user = $request->user('sanctum');
+
+        return response()->json($user->shipments()->paginate(15));
+    }
 }

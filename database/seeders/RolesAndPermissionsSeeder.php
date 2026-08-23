@@ -54,11 +54,15 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'editar usuario'])->syncRoles($empleado);
         Permission::firstOrCreate(['name' => 'eliminar usuario'])->syncRoles($empleado);
 
+        Permission::firstOrCreate(['name' => 'ver pedidos usuario'])->syncRoles($empleado);
+        Permission::firstOrCreate(['name' => 'ver empresa usuario'])->syncRoles($empleado);
+
         // company
         Permission::firstOrCreate(['name' => 'crear empresa'])->syncRoles($superadmin);
         Permission::firstOrCreate(['name' => 'ver empresas'])->syncRoles($superadmin);
         Permission::firstOrCreate(['name' => 'editar empresa'])->syncRoles($superadmin);
         Permission::firstOrCreate(['name' => 'eliminar empresa'])->syncRoles($superadmin);
+        Permission::firstOrCreate(['name' => 'ver usuarios empresa'])->syncRoles($superadmin);
         // document
         // Los documentos no son públicos como el seguimiento: solo empleados.
         Permission::firstOrCreate(['name' => 'crear documento'])->syncRoles($empleado);

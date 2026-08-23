@@ -90,4 +90,9 @@ class CompanyController extends Controller
 
         return response()->json(status: 204);
     }
+
+    public function users(Company $company): JsonResponse
+    {
+        return response()->json($company->users()->paginate(15));
+    }
 }

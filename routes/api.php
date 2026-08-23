@@ -14,6 +14,12 @@ Route::get('shipments/{shipment:tracking_number}', [ShipmentController::class, '
 
 // El grupo autentica con sanctum; cada ruta solo declara el permiso que exige.
 Route::middleware('auth:sanctum')->group(function () {
+
+    // SIN PERMISOS (Datos del propio usuario, no de otros)
+    Route::get('users/shipments', [UserController::class, 'myshipments'])
+        ->name('users.myshipments');
+
+    // CON PERMISOS
     Route::get('shipments', [ShipmentController::class, 'index'])
         ->middleware('permission:ver pedido')
         ->name('shipments.index');
@@ -60,6 +66,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('companies/{company}', [CompanyController::class, 'destroy'])
         ->middleware('permission:eliminar empresa')
         ->name('companies.destroy');
+
+    Route::get('companies/{company}/users', [CompanyController::class, 'users'])
+        ->middleware('permission:ver usuarios empresa')
+        ->name('companies.users');
 
     // Los documentos de un envío no tienen endpoint público: a diferencia del
     // seguimiento, contienen facturas y despachos de aduana.
@@ -126,4 +136,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('users/{user}', [UserController::class, 'destroy'])
         ->middleware('permission:eliminar usuario')
         ->name('users.destroy');
+
+    Route::get('users/{user}/shipments', [UserController::class, 'shipments'])
+        ->middleware('permission:ver pedidos usuario')
+        ->name('users.shipments');
+
+    Route::get('users/{user}/company', [UserController::class, 'company'])
+        ->middleware('permission:ver empresa usuario')
+        ->name('users.company');
+
 });
