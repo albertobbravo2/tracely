@@ -1,3 +1,3 @@
 <x-layouts::app :title="__('Dashboard')">
- <h1>{{ __('Dashboard') }}</h1>
+    <livewire:my-shipments />
 </x-layouts::app>

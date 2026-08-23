@@ -1,7 +1,9 @@
 <?php
 
 use App\Enums\ShipmentStatus;
+use App\Models\User;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Livewire\Attributes\Computed;
@@ -16,6 +18,14 @@ new class extends Component
     /** @var array<string, mixed>|null */
     public ?array $shipment = null;
 
+    /**
+     * ¿El envío mostrado ya está en la lista del usuario logueado?
+     *
+     * Siempre false para un invitado: el botón de vincular solo existe bajo
+     * `@auth`, y la pivote es de un usuario concreto.
+     */
+    public bool $linked = false;
+
     public ?string $errorMessage = null;
 
     /**
@@ -26,33 +36,17 @@ new class extends Component
         $this->validate();
 
         $this->shipment = null;
+        $this->linked = false;
         $this->errorMessage = null;
 
         $path = route('shipments.show', ['shipment' => trim($this->tracking_number)], absolute: false);
 
-        $pending = Http::acceptJson()
-            ->timeout(10)
-            ->baseUrl(config('services.internal_api.url'));
+        $response = $this->callApi('get', $path);
 
-        // Esta llamada sale del servidor, así que no arrastra la sesión del
-        // navegador: para la API seríamos un invitado y solo devolvería los datos
-        // públicos. Si hay usuario logueado le acuñamos un token de un minuto para
-        // que la API lo reconozca y responda con el histórico.
-        $token = auth()->user()?->createToken('searchfield', ['shipment:read'], now()->addMinute());
-
-        if ($token) {
-            $pending->withToken($token->plainTextToken);
-        }
-
-        try {
-            $response = $pending->get($path);
-        } catch (ConnectionException) {
+        if ($response === null) {
             $this->errorMessage = __('No pudimos conectar con el servicio de rastreo. Inténtalo de nuevo en unos segundos.');
 
             return;
-        } finally {
-            // En finally para que no quede el token vivo si la conexión falla.
-            $token?->accessToken->delete();
         }
 
         if ($response->status() === 404) {
@@ -68,8 +62,65 @@ new class extends Component
         }
 
         $this->shipment = $response->json();
+        $this->linked = $this->isLinked();
 
         $this->dispatch('shipment-found', shipment: $this->shipment);
+    }
+
+    /**
+     * Añadir el envío mostrado a la lista del usuario logueado.
+     */
+    public function link(): void
+    {
+        $this->toggleLink(link: true);
+    }
+
+    /**
+     * Quitar el envío mostrado de la lista del usuario logueado.
+     */
+    public function unlink(): void
+    {
+        $this->toggleLink(link: false);
+    }
+
+    /**
+     * El vínculo se crea y se borra a través de la API (`shipments.users.*`),
+     * no tocando la pivote desde aquí: mismo motivo que la búsqueda, que la
+     * regla de qué se puede vincular viva en un solo sitio.
+     */
+    private function toggleLink(bool $link): void
+    {
+        $trackingNumber = $this->shipment['tracking_number'] ?? null;
+
+        if (! auth()->check() || ! is_string($trackingNumber)) {
+            return;
+        }
+
+        $this->errorMessage = null;
+
+        $path = route(
+            $link ? 'shipments.users.store' : 'shipments.users.destroy',
+            ['shipment' => $trackingNumber],
+            absolute: false,
+        );
+
+        $response = $this->callApi($link ? 'post' : 'delete', $path, 'shipment:write');
+
+        if ($response === null) {
+            $this->errorMessage = __('No pudimos conectar con el servicio de rastreo. Inténtalo de nuevo en unos segundos.');
+
+            return;
+        }
+
+        if ($response->failed()) {
+            $this->errorMessage = $link
+                ? __('No pudimos vincular el envío a tu cuenta.')
+                : __('No pudimos quitar el envío de tu cuenta.');
+
+            return;
+        }
+
+        $this->linked = $link;
     }
 
     /**
@@ -133,6 +184,59 @@ new class extends Component
         // locale('es') explícito: APP_LOCALE es 'en' pero toda la interfaz está en
         // español, y sin esto las fechas saldrían como "9 Aug 2026".
         return $date ? Carbon::parse($date)->locale('es')->translatedFormat('j M Y') : null;
+    }
+
+    /**
+     * Llamar a nuestra propia API desde el servidor.
+     *
+     * La petición no arrastra la sesión del navegador: para la API seríamos un
+     * invitado y solo devolvería los datos públicos. Si hay usuario logueado le
+     * acuñamos un token de un minuto para que lo reconozca, y lo borramos en
+     * `finally` para que no quede vivo si la conexión falla.
+     *
+     * Devuelve null si no se pudo conectar; el mensaje lo decide quien llama.
+     */
+    private function callApi(string $method, string $path, string $ability = 'shipment:read'): ?Response
+    {
+        $pending = Http::acceptJson()
+            ->timeout(10)
+            ->baseUrl(config('services.internal_api.url'));
+
+        $token = auth()->user()?->createToken('searchfield', [$ability], now()->addMinute());
+
+        if ($token) {
+            $pending->withToken($token->plainTextToken);
+        }
+
+        try {
+            return $pending->send($method, $path);
+        } catch (ConnectionException) {
+            return null;
+        } finally {
+            $token?->accessToken->delete();
+        }
+    }
+
+    /**
+     * ¿Este envío ya está vinculado a la cuenta de quien mira?
+     *
+     * Esto sí se resuelve con Eloquent y no por la API: no son datos del envío
+     * recortados según la sesión —de eso va el patrón de llamar a la API—, sino
+     * la pivote del propio usuario, y `users.myshipments` viene paginado, así
+     * que no sirve para responderlo de un vistazo.
+     */
+    private function isLinked(): bool
+    {
+        $user = auth()->user();
+        $trackingNumber = $this->shipment['tracking_number'] ?? null;
+
+        if (! $user instanceof User || ! is_string($trackingNumber)) {
+            return false;
+        }
+
+        return $user->shipments()
+            ->where('tracking_number', $trackingNumber)
+            ->exists();
     }
 
     /**
@@ -236,9 +340,39 @@ new class extends Component
                         </flux:heading>
                     </div>
 
-                    <flux:badge rounded class="shrink-0 {{ $this->statusBadge['badge'] }}">
-                        {{ $this->statusBadge['label'] }}
-                    </flux:badge>
+                    <div class="flex shrink-0 flex-col items-end gap-3">
+                        <flux:badge rounded class="{{ $this->statusBadge['badge'] }}">
+                            {{ $this->statusBadge['label'] }}
+                        </flux:badge>
+
+                        {{-- Solo con sesión: la pivote `shipment_user` cuelga de una
+                             cuenta concreta, y un invitado no tiene ninguna. --}}
+                        @auth
+                            @if ($linked)
+                                <flux:button
+                                    size="sm"
+                                    icon="minus-circle"
+                                    wire:click="unlink"
+                                    wire:loading.attr="disabled"
+                                    wire:target="unlink"
+                                >
+                                    {{ __('Eliminar') }}
+                                </flux:button>
+                            @else
+                                <flux:button
+                                    size="sm"
+                                    variant="primary"
+                                    icon="plus-circle"
+                                    wire:click="link"
+                                    wire:loading.attr="disabled"
+                                    wire:target="link"
+                                    class="[--color-accent-foreground:var(--color-white)] [--color-accent:var(--color-brand-navy)]"
+                                >
+                                    {{ __('Vincular') }}
+                                </flux:button>
+                            @endif
+                        @endauth
+                    </div>
                 </div>
 
                 <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
