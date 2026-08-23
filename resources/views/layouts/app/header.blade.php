@@ -28,6 +28,19 @@
                     {{ __('Dashboard') }}
                 </flux:navbar.item>
 
+                {{-- Los mismos roles que protegen el bloque `backoffice.` en routes/web.php. --}}
+                @if (auth()->user()->hasAnyRole(['agente', 'administrador', 'superadministrador']))
+
+                    <flux:navbar.item
+                        icon="briefcase"
+                        class="h-10 max-lg:hidden [&>div>svg]:size-5"
+                        :href="route('backoffice.index')"
+                        :current="request()->routeIs('backoffice.*')" wire:navigate>
+                        {{ __('Backoffice') }}
+                    </flux:navbar.item>
+
+                @endif
+
                 @endauth
 
             </flux:navbar>
