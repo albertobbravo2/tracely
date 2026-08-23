@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Shipment;
+use App\Models\ShipmentHistory;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -46,6 +47,33 @@ class UserShipmentTest extends TestCase
 
         $response->assertOk();
         $this->assertSame([$shipment->id], collect($response->json('data'))->pluck('id')->all());
+    }
+
+    public function test_la_lista_propia_trae_el_historial_de_cada_envio(): void
+    {
+        // El dashboard pinta la línea de tiempo de cada envío a partir de esto:
+        // sin el histórico dentro tendría que pedir cada envío por separado.
+        $cliente = User::factory()->create();
+        $shipment = Shipment::factory()->create();
+        $cliente->shipments()->attach($shipment);
+
+        $viejo = ShipmentHistory::factory()->forShipment($shipment)->create([
+            'recorded_at' => now()->subDays(3),
+        ]);
+        $nuevo = ShipmentHistory::factory()->forShipment($shipment)->create([
+            'recorded_at' => now()->subDay(),
+        ]);
+
+        $response = $this->actingAs($cliente)->getJson(route('users.myshipments'));
+
+        $response->assertOk();
+
+        // Ordenado por `recorded_at`, igual que en shipments.show: la vista
+        // marca el último evento como el estado actual y depende de ese orden.
+        $this->assertSame(
+            [$viejo->id, $nuevo->id],
+            collect($response->json('data.0.histories'))->pluck('id')->all(),
+        );
     }
 
     public function test_la_lista_propia_no_incluye_los_envios_de_otros(): void

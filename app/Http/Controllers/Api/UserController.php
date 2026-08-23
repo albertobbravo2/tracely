@@ -107,6 +107,13 @@ class UserController extends Controller
     {
         $user = $request->user('sanctum');
 
-        return response()->json($user->shipments()->paginate(15));
+        // El histórico viaja con la lista, igual que en `shipments.show` y con
+        // el mismo orden: el dashboard pinta la línea de tiempo de cada envío,
+        // y sin esto tendría que pedir cada uno por separado.
+        return response()->json(
+            $user->shipments()
+                ->with(['histories' => fn ($query) => $query->orderBy('recorded_at')])
+                ->paginate(15)
+        );
     }
 }

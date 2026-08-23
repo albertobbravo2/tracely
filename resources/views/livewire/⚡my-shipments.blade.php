@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\ShipmentStatus;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Livewire\Component;
@@ -56,25 +55,6 @@ new class extends Component
 
         $this->shipments = $response->json('data') ?? [];
     }
-
-    /**
-     * Etiqueta y clases del badge de estado. Misma paleta que ⚡searchfield:
-     * `ok` entregado, `alerta` incidencia, `azul` en tránsito/aduana,
-     * `gris` pendiente o cualquier estado sin reconocer.
-     *
-     * @return array<string, string>
-     */
-    private function statusBadge(?string $status): array
-    {
-        return match (ShipmentStatus::tryFrom((string) $status)) {
-            ShipmentStatus::Entregado => ['badge' => '!bg-ok-fondo !text-ok-fuerte'],
-            ShipmentStatus::EnTransito, ShipmentStatus::EnAduana => ['badge' => '!bg-azul-050 !text-azul-800'],
-            ShipmentStatus::Incidencia => ['badge' => '!bg-alerta-fondo !text-alerta-fuerte'],
-            default => ['badge' => '!bg-gris-050 !text-gris-600'],
-        } + [
-            'label' => ShipmentStatus::tryFrom((string) $status)?->label() ?? __('Estado desconocido'),
-        ];
-    }
 };
 ?>
 
@@ -90,28 +70,19 @@ new class extends Component
             <flux:text class="text-gris-600 dark:text-azul-100">{{ __('Todavía no tienes ningún pedido vinculado.') }}</flux:text>
         </div>
     @else
-        <flux:table class="mt-4">
-            <flux:table.columns>
-                <flux:table.column>{{ __('Guía') }}</flux:table.column>
-                <flux:table.column>{{ __('Destino') }}</flux:table.column>
-                <flux:table.column>{{ __('Estado') }}</flux:table.column>
-            </flux:table.columns>
-
-            <flux:table.rows>
-                @foreach ($shipments as $shipment)
-                    <flux:table.row :key="$shipment['id']">
-                        <flux:table.cell class="font-semibold text-gris-900 dark:text-blanco">
-                            {{ $shipment['tracking_number'] }}
-                        </flux:table.cell>
-                        <flux:table.cell>{{ $shipment['destination'] }}</flux:table.cell>
-                        <flux:table.cell>
-                            <flux:badge rounded size="sm" class="{{ $this->statusBadge($shipment['status'])['badge'] }}">
-                                {{ $this->statusBadge($shipment['status'])['label'] }}
-                            </flux:badge>
-                        </flux:table.cell>
-                    </flux:table.row>
-                @endforeach
-            </flux:table.rows>
-        </flux:table>
+        {{-- Una tarjeta por envío, cada una con su propia línea de tiempo, en
+             vez de una fila por envío: el estado de un pedido se lee mejor como
+             recorrido que como celda. --}}
+        <div class="mt-4 space-y-6">
+            @foreach ($shipments as $shipment)
+                {{-- `linked` va dado: esta lista son justo los envíos vinculados,
+                     así que la tarjeta no tiene que consultarlo una por una. --}}
+                <livewire:shipment-card
+                    :shipment="$shipment"
+                    :linked="true"
+                    :key="'shipment-'.$shipment['id']"
+                />
+            @endforeach
+        </div>
     @endif
 </div>
