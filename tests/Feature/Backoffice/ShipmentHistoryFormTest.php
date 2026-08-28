@@ -145,6 +145,24 @@ class ShipmentHistoryFormTest extends TestCase
             ->assertSet('recorded_at', '2026-08-20T10:30');
     }
 
+    public function test_un_evento_sin_fecha_propone_la_de_ahora(): void
+    {
+        Http::fake(function (Request $request) {
+            if (str_ends_with($request->url(), '/api/shipment-histories/9')) {
+                return Http::response([...$this->evento(), 'recorded_at' => null]);
+            }
+
+            return $this->pagina([]);
+        });
+
+        Livewire::actingAs($this->empleado())
+            ->test('backoffice.shipment-histories')
+            ->call('edit', 9)
+            // `recorded_at` es obligatorio en la API: un campo en blanco solo
+            // conseguía un 422 al guardar que el formulario no explicaba.
+            ->assertSet('recorded_at', now()->format('Y-m-d\TH:i'));
+    }
+
     public function test_guardar_manda_el_evento_por_put(): void
     {
         Http::fake(function (Request $request) {

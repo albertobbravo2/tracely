@@ -113,9 +113,7 @@ class extends BackofficeComponent
         $this->status = $history['status'] ?? '';
         $this->location = (string) ($history['location'] ?? '');
         $this->description = (string) ($history['description'] ?? '');
-        $this->recorded_at = $history['recorded_at']
-            ? Carbon::parse($history['recorded_at'])->format('Y-m-d\TH:i')
-            : '';
+        $this->recorded_at = $this->forInput($history['recorded_at'] ?? null);
 
         Flux::modal('history-form')->show();
     }
@@ -202,7 +200,21 @@ class extends BackofficeComponent
         $this->status = '';
         $this->location = '';
         $this->description = '';
-        $this->recorded_at = '';
+        $this->recorded_at = $this->forInput(null);
+    }
+
+    /**
+     * Una fecha tal y como la entiende un `<input type="datetime-local">`, que
+     * no sabe leer el ISO-8601 con zona que devuelve la API.
+     *
+     * Sin fecha se propone la de ahora, y no un campo en blanco: `recorded_at`
+     * es obligatorio en `shipment-histories.update`, así que dejarlo vacío solo
+     * conseguía un 422 al guardar. Además es la fecha que casi siempre toca —
+     * un evento se registra cuando ocurre.
+     */
+    private function forInput(?string $date): string
+    {
+        return ($date ? Carbon::parse($date) : now())->format('Y-m-d\TH:i');
     }
 
     /**
