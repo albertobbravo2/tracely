@@ -375,13 +375,10 @@ class extends BackofficeComponent
 
     {{-- Filtros: en columna hasta sm para que no se aplasten en móvil. --}}
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <flux:input
-            wire:model.live.debounce.400ms="search"
-            icon="magnifying-glass"
-            class="sm:max-w-sm"
-            :placeholder="__('Buscar por guía, destinatario, origen o destino')"
+        <x-backoffice.search
+            model="search"
             :label="__('Buscar pedidos')"
-            label:class="sr-only"
+            :placeholder="__('Buscar por guía, destinatario, origen o destino')"
         />
 
         <flux:select wire:model.live="statusFilter" class="sm:max-w-56" :label="__('Filtrar por estado')" label:class="sr-only">
@@ -393,111 +390,110 @@ class extends BackofficeComponent
     </div>
 
     @if ($errorMessage)
-        <x-backoffice.alert :message="$errorMessage" />
+        <x-backoffice.alert :message="$errorMessage" retry="retry" />
     @endif
 
-    @if (empty($shipments))
-        @if (! $errorMessage)
-            <x-backoffice.empty
-                icon="truck"
-                :heading="__('No hay pedidos que mostrar')"
-                :text="filled($search) || filled($statusFilter)
-                    ? __('Ningún pedido coincide con el filtro aplicado.')
-                    : __('Todavía no se ha registrado ningún envío.')"
-            >
-                <x-slot:actions>
-                    <flux:button variant="primary" icon="plus" wire:click="create">{{ __('Nuevo pedido') }}</flux:button>
-                </x-slot:actions>
-            </x-backoffice.empty>
-        @endif
-    @else
-        <div class="space-y-4">
-            <flux:table>
-                <flux:table.columns>
-                    <flux:table.column>{{ __('Guía') }}</flux:table.column>
-                    <flux:table.column class="max-md:hidden">{{ __('Destinatario') }}</flux:table.column>
-                    <flux:table.column class="max-lg:hidden">{{ __('Ruta') }}</flux:table.column>
-                    <flux:table.column class="max-lg:hidden">{{ __('Entrega estimada') }}</flux:table.column>
-                    <flux:table.column class="max-sm:hidden">{{ __('Estado') }}</flux:table.column>
-                    <flux:table.column class="text-end">{{ __('Acciones') }}</flux:table.column>
-                </flux:table.columns>
+    <x-backoffice.busy target="search, statusFilter, nextPage, previousPage, retry">
+        @if (empty($shipments))
+            @if (! $errorMessage)
+                <x-backoffice.empty
+                    icon="truck"
+                    :heading="__('No hay pedidos que mostrar')"
+                    :text="filled($search) || filled($statusFilter)
+                        ? __('Ningún pedido coincide con el filtro aplicado.')
+                        : __('Todavía no se ha registrado ningún envío.')"
+                >
+                    <x-slot:actions>
+                        <flux:button variant="primary" icon="plus" wire:click="create">{{ __('Nuevo pedido') }}</flux:button>
+                    </x-slot:actions>
+                </x-backoffice.empty>
+            @endif
+        @else
+            <div class="space-y-4">
+                <flux:table>
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Guía') }}</flux:table.column>
+                        <flux:table.column class="max-md:hidden">{{ __('Destinatario') }}</flux:table.column>
+                        <flux:table.column class="max-lg:hidden">{{ __('Ruta') }}</flux:table.column>
+                        <flux:table.column class="max-lg:hidden">{{ __('Entrega estimada') }}</flux:table.column>
+                        <flux:table.column class="max-sm:hidden">{{ __('Estado') }}</flux:table.column>
+                        <flux:table.column class="text-end">{{ __('Acciones') }}</flux:table.column>
+                    </flux:table.columns>
 
-                <flux:table.rows>
-                    @foreach ($shipments as $shipment)
-                        <flux:table.row :key="$shipment['id']">
-                            <flux:table.cell>
-                                <span class="font-semibold text-gris-900 dark:text-blanco">
-                                    {{ $shipment['tracking_number'] }}
-                                </span>
+                    <flux:table.rows>
+                        @foreach ($shipments as $shipment)
+                            <flux:table.row :key="$shipment['id']">
+                                <flux:table.cell>
+                                    <span class="font-semibold text-gris-900 dark:text-blanco">
+                                        {{ $shipment['tracking_number'] }}
+                                    </span>
 
-                                {{-- En móvil solo caben dos columnas sin empujar las
-                                     acciones fuera de pantalla, así que lo demás
-                                     —incluido el estado— se pliega aquí debajo. --}}
-                                <span class="block text-sm text-gris-600 md:hidden dark:text-azul-200">
-                                    {{ $shipment['receiver_name'] }} · {{ $shipment['destination'] }}
-                                </span>
+                                    {{-- En móvil solo caben dos columnas sin empujar las
+                                         acciones fuera de pantalla, así que lo demás
+                                         —incluido el estado— se pliega aquí debajo. --}}
+                                    <span class="block text-sm text-gris-600 md:hidden dark:text-azul-200">
+                                        {{ $shipment['receiver_name'] }} · {{ $shipment['destination'] }}
+                                    </span>
 
-                                <span class="mt-1 block sm:hidden">
+                                    <span class="mt-1 block sm:hidden">
+                                        <x-backoffice.status-badge :status="$shipment['status'] ?? null" />
+                                    </span>
+                                </flux:table.cell>
+
+                                <flux:table.cell class="max-md:hidden">{{ $shipment['receiver_name'] }}</flux:table.cell>
+
+                                <flux:table.cell class="whitespace-nowrap max-lg:hidden">
+                                    {{ $shipment['origin'] }} → {{ $shipment['destination'] }}
+                                </flux:table.cell>
+
+                                <flux:table.cell class="whitespace-nowrap max-lg:hidden">
+                                    {{ $this->shortDate($shipment['estimated_delivery_date'] ?? null) }}
+                                </flux:table.cell>
+
+                                <flux:table.cell class="max-sm:hidden">
                                     <x-backoffice.status-badge :status="$shipment['status'] ?? null" />
-                                </span>
-                            </flux:table.cell>
+                                </flux:table.cell>
 
-                            <flux:table.cell class="max-md:hidden">{{ $shipment['receiver_name'] }}</flux:table.cell>
+                                <flux:table.cell class="text-end">
+                                    <div class="flex justify-end gap-1">
+                                        <flux:button
+                                            size="sm"
+                                            variant="ghost"
+                                            icon="pencil-square"
+                                            :label="__('Editar pedido')"
+                                            wire:click="edit('{{ $shipment['tracking_number'] }}')"
+                                        />
+                                        <flux:button
+                                            size="sm"
+                                            variant="ghost"
+                                            icon="trash"
+                                            :label="__('Eliminar pedido')"
+                                            wire:click="confirmDelete('{{ $shipment['tracking_number'] }}')"
+                                        />
+                                    </div>
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @endforeach
+                    </flux:table.rows>
+                </flux:table>
 
-                            <flux:table.cell class="whitespace-nowrap max-lg:hidden">
-                                {{ $shipment['origin'] }} → {{ $shipment['destination'] }}
-                            </flux:table.cell>
-
-                            <flux:table.cell class="whitespace-nowrap max-lg:hidden">
-                                {{ $this->shortDate($shipment['estimated_delivery_date'] ?? null) }}
-                            </flux:table.cell>
-
-                            <flux:table.cell class="max-sm:hidden">
-                                <x-backoffice.status-badge :status="$shipment['status'] ?? null" />
-                            </flux:table.cell>
-
-                            <flux:table.cell class="text-end">
-                                <div class="flex justify-end gap-1">
-                                    <flux:button
-                                        size="sm"
-                                        variant="ghost"
-                                        icon="pencil-square"
-                                        :label="__('Editar pedido')"
-                                        wire:click="edit('{{ $shipment['tracking_number'] }}')"
-                                    />
-                                    <flux:button
-                                        size="sm"
-                                        variant="ghost"
-                                        icon="trash"
-                                        :label="__('Eliminar pedido')"
-                                        wire:click="confirmDelete('{{ $shipment['tracking_number'] }}')"
-                                    />
-                                </div>
-                            </flux:table.cell>
-                        </flux:table.row>
-                    @endforeach
-                </flux:table.rows>
-            </flux:table>
-
-            <x-backoffice.pagination :meta="$meta" />
-        </div>
-    @endif
+                <x-backoffice.pagination :meta="$meta" />
+            </div>
+        @endif
+    </x-backoffice.busy>
 
     {{-- Alta y edición comparten formulario: lo único que cambia es que el
          bloque de historial solo aparece en el alta. --}}
-    <flux:modal name="shipment-form" class="w-full md:w-[38rem]" wire:close="$refresh">
+    <x-backoffice.modal
+        name="shipment-form"
+        size="wide"
+        :heading="$editing === null ? __('Nuevo pedido') : __('Editar pedido')"
+        :description="$editing === null
+            ? __('Nace como pendiente, con la ubicación y la descripción como primer evento de su historial.')
+            : __('El historial de este pedido se gestiona desde la sección Historial de pedidos.')"
+        wire:close="$refresh"
+    >
         <form wire:submit="save" class="space-y-6">
-            <div>
-                <flux:heading size="lg">
-                    {{ $editing === null ? __('Nuevo pedido') : __('Editar pedido') }}
-                </flux:heading>
-                <flux:text class="mt-1">
-                    {{ $editing === null
-                        ? __('Nace como pendiente, con la ubicación y la descripción como primer evento de su historial.')
-                        : __('El historial de este pedido se gestiona desde la sección Historial de pedidos.') }}
-                </flux:text>
-            </div>
-
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <flux:field>
                     <flux:label>{{ __('Número de guía') }}</flux:label>
@@ -589,26 +585,22 @@ class extends BackofficeComponent
                 </flux:button>
             </div>
         </form>
-    </flux:modal>
+    </x-backoffice.modal>
 
-    <flux:modal name="shipment-delete" class="w-full md:w-96">
-        <div class="space-y-6">
-            <div>
-                <flux:heading size="lg">{{ __('Eliminar pedido') }}</flux:heading>
-                <flux:text class="mt-1">
-                    {{ __('Se eliminará :guia junto con su historial, sus documentos y los vínculos con usuarios. No se puede deshacer.', ['guia' => $deleting]) }}
-                </flux:text>
-            </div>
+    <x-backoffice.modal
+        name="shipment-delete"
+        size="narrow"
+        :heading="__('Eliminar pedido')"
+        :description="__('Se eliminará :guia junto con su historial, sus documentos y los vínculos con usuarios. No se puede deshacer.', ['guia' => $deleting])"
+    >
+        <div class="flex justify-end gap-2">
+            <flux:modal.close>
+                <flux:button variant="ghost">{{ __('Cancelar') }}</flux:button>
+            </flux:modal.close>
 
-            <div class="flex justify-end gap-2">
-                <flux:modal.close>
-                    <flux:button variant="ghost">{{ __('Cancelar') }}</flux:button>
-                </flux:modal.close>
-
-                <flux:button variant="danger" wire:click="destroy" wire:loading.attr="disabled" wire:target="destroy">
-                    {{ __('Eliminar') }}
-                </flux:button>
-            </div>
+            <flux:button variant="danger" wire:click="destroy" wire:loading.attr="disabled" wire:target="destroy">
+                {{ __('Eliminar') }}
+            </flux:button>
         </div>
-    </flux:modal>
+    </x-backoffice.modal>
 </div>

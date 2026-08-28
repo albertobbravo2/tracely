@@ -92,6 +92,55 @@ select:focus[data-flux-control] {
     @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-accent-foreground;
 }
 
+/* Backoffice: Flux en la paleta de marca ------------------------------------
+
+   <flux:table> y <flux:modal> vienen en la escala `zinc`, que es la de Flux,
+   no la del producto. Dentro del backoffice eso se nota: las líneas de la
+   tabla salían blancas descoloridas justo encima de la paginación, que sí usa
+   `azul-800`, y el diálogo aparecía como una caja gris en una app azul.
+
+   Se corrige aquí, con los tokens del tema, en vez de repetir overrides en
+   cada celda y en cada modal de las cinco pantallas. Va acotado a `.backoffice`
+   —la clase del body de layouts/backoffice.blade.php— a propósito: el resto de
+   la app (ajustes, dashboard) sí usa el gris de Flux y debe seguir haciéndolo.
+
+   Sin `!important`: estos selectores tienen más especificidad que las
+   utilidades de Tailwind, así que una clase puesta a mano en una celda
+   concreta sigue ganando. */
+
+.backoffice [data-flux-table] :is([data-flux-column], [data-flux-cell]) {
+    border-color: var(--color-gris-200);
+}
+
+.backoffice [data-flux-table] [data-flux-column] {
+    color: var(--color-gris-900);
+}
+
+.backoffice [data-flux-table] [data-flux-cell] {
+    color: var(--color-gris-600);
+}
+
+.backoffice [data-flux-modal] dialog {
+    background-color: var(--color-blanco);
+}
+
+.dark .backoffice [data-flux-table] :is([data-flux-column], [data-flux-cell]) {
+    border-color: var(--color-azul-800);
+}
+
+.dark .backoffice [data-flux-table] [data-flux-column] {
+    color: var(--color-blanco);
+}
+
+.dark .backoffice [data-flux-table] [data-flux-cell] {
+    color: var(--color-azul-100);
+}
+
+.dark .backoffice [data-flux-modal] dialog {
+    background-color: var(--color-azul-900);
+    --tw-ring-color: var(--color-azul-800);
+}
+
 /* \[:where(&)\]:size-4 {
     @apply size-4;
 } */

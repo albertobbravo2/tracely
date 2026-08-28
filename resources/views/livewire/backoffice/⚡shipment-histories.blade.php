@@ -220,6 +220,24 @@ class extends BackofficeComponent
     {
         return $date ? Carbon::parse($date)->locale('es')->translatedFormat('j M Y · H:i') : '—';
     }
+
+    /**
+     * El evento pendiente de borrar, descrito por su guía y su fecha: es lo que
+     * lo distingue de los demás eventos del mismo pedido.
+     */
+    public function deletingLabel(): string
+    {
+        $event = $this->rowById($this->histories, $this->deleting);
+
+        if ($event === []) {
+            return '';
+        }
+
+        return collect([
+            $event['shipment']['tracking_number'] ?? null,
+            isset($event['recorded_at']) ? $this->eventDate((string) $event['recorded_at']) : null,
+        ])->filter()->join(' · ');
+    }
 };
 ?>
 
@@ -229,110 +247,120 @@ class extends BackofficeComponent
         :subheading="__('Eventos registrados en la línea de tiempo de cada envío. Los nuevos eventos nacen con el pedido, aquí solo se corrigen o se borran.')"
     />
 
-    <flux:input
-        wire:model.live.debounce.400ms="trackingFilter"
-        icon="magnifying-glass"
-        class="sm:max-w-sm"
-        :placeholder="__('Filtrar por número de guía exacto')"
+    <x-backoffice.search
+        model="trackingFilter"
         :label="__('Filtrar por guía')"
-        label:class="sr-only"
+        :placeholder="__('Filtrar por número de guía exacto')"
     />
 
     @if ($errorMessage)
-        <x-backoffice.alert :message="$errorMessage" />
+        <x-backoffice.alert :message="$errorMessage" retry="retry" />
     @endif
 
-    @if (empty($histories))
-        @if (! $errorMessage)
-            <x-backoffice.empty
-                icon="clock"
-                :heading="__('No hay eventos que mostrar')"
-                :text="filled($trackingFilter)
-                    ? __('Ningún pedido con esa guía tiene eventos registrados.')
-                    : __('Todavía no se ha registrado ningún evento de historial.')"
-            />
-        @endif
-    @else
-        <div class="space-y-4">
-            <flux:table>
-                <flux:table.columns>
-                    <flux:table.column>{{ __('Guía') }}</flux:table.column>
-                    <flux:table.column class="max-sm:hidden">{{ __('Estado') }}</flux:table.column>
-                    <flux:table.column class="max-md:hidden">{{ __('Ubicación') }}</flux:table.column>
-                    <flux:table.column class="max-xl:hidden">{{ __('Descripción') }}</flux:table.column>
-                    <flux:table.column class="max-sm:hidden">{{ __('Ocurrió') }}</flux:table.column>
-                    <flux:table.column class="text-end">{{ __('Acciones') }}</flux:table.column>
-                </flux:table.columns>
+    <x-backoffice.busy target="trackingFilter, nextPage, previousPage, retry">
+        @if (empty($histories))
+            @if (! $errorMessage)
+                {{-- Aquí no se crean eventos, así que el estado vacío no tiene
+                     acción propia: la salida es la pantalla donde sí nacen. --}}
+                <x-backoffice.empty
+                    icon="clock"
+                    :heading="__('No hay eventos que mostrar')"
+                    :text="filled($trackingFilter)
+                        ? __('Ningún pedido con esa guía tiene eventos registrados.')
+                        : __('Todavía no se ha registrado ningún evento de historial.')"
+                >
+                    <x-slot:actions>
+                        <flux:button variant="filled" icon="truck" :href="route('backoffice.shipments')" wire:navigate>
+                            {{ __('Ir a Pedidos') }}
+                        </flux:button>
+                    </x-slot:actions>
+                </x-backoffice.empty>
+            @endif
+        @else
+            <div class="space-y-4">
+                <flux:table>
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Guía') }}</flux:table.column>
+                        <flux:table.column class="max-sm:hidden">{{ __('Estado') }}</flux:table.column>
+                        <flux:table.column class="max-md:hidden">{{ __('Ubicación') }}</flux:table.column>
+                        <flux:table.column class="max-xl:hidden">{{ __('Descripción') }}</flux:table.column>
+                        <flux:table.column class="max-sm:hidden">{{ __('Ocurrió') }}</flux:table.column>
+                        <flux:table.column class="text-end">{{ __('Acciones') }}</flux:table.column>
+                    </flux:table.columns>
 
-                <flux:table.rows>
-                    @foreach ($histories as $history)
-                        <flux:table.row :key="$history['id']">
-                            <flux:table.cell>
-                                <span class="font-semibold text-gris-900 dark:text-blanco">
-                                    {{ $history['shipment']['tracking_number'] ?? '—' }}
-                                </span>
+                    <flux:table.rows>
+                        @foreach ($histories as $history)
+                            <flux:table.row :key="$history['id']">
+                                <flux:table.cell>
+                                    <span class="font-semibold text-gris-900 dark:text-blanco">
+                                        {{ $history['shipment']['tracking_number'] ?? '—' }}
+                                    </span>
 
-                                {{-- En móvil solo caben dos columnas sin empujar las
-                                     acciones fuera de pantalla: el resto se pliega aquí. --}}
-                                <span class="block text-sm text-gris-600 sm:hidden dark:text-azul-200">
-                                    {{ $this->eventDate($history['recorded_at'] ?? null) }}
-                                </span>
+                                    {{-- En móvil solo caben dos columnas sin empujar las
+                                         acciones fuera de pantalla: el resto se pliega aquí. --}}
+                                    <span class="block text-sm text-gris-600 sm:hidden dark:text-azul-200">
+                                        {{ $this->eventDate($history['recorded_at'] ?? null) }}
+                                    </span>
 
-                                <span class="mt-1 block sm:hidden">
+                                    <span class="mt-1 block sm:hidden">
+                                        <x-backoffice.status-badge :status="$history['status'] ?? null" />
+                                    </span>
+                                </flux:table.cell>
+
+                                <flux:table.cell class="max-sm:hidden">
                                     <x-backoffice.status-badge :status="$history['status'] ?? null" />
-                                </span>
-                            </flux:table.cell>
+                                </flux:table.cell>
 
-                            <flux:table.cell class="max-sm:hidden">
-                                <x-backoffice.status-badge :status="$history['status'] ?? null" />
-                            </flux:table.cell>
+                                <flux:table.cell class="max-md:hidden">{{ $history['location'] ?: '—' }}</flux:table.cell>
 
-                            <flux:table.cell class="max-md:hidden">{{ $history['location'] ?: '—' }}</flux:table.cell>
+                                {{-- La descripción se corta para que no descuadre la
+                                     tabla, así que el texto entero se deja al alcance
+                                     del cursor en vez de obligar a abrir el editor. --}}
+                                <flux:table.cell class="max-xl:hidden">
+                                    <span class="block max-w-56 truncate" title="{{ $history['description'] ?: '' }}">
+                                        {{ $history['description'] ?: '—' }}
+                                    </span>
+                                </flux:table.cell>
 
-                            <flux:table.cell class="max-w-56 truncate max-xl:hidden">
-                                {{ $history['description'] ?: '—' }}
-                            </flux:table.cell>
+                                <flux:table.cell class="whitespace-nowrap max-sm:hidden">
+                                    {{ $this->eventDate($history['recorded_at'] ?? null) }}
+                                </flux:table.cell>
 
-                            <flux:table.cell class="whitespace-nowrap max-sm:hidden">
-                                {{ $this->eventDate($history['recorded_at'] ?? null) }}
-                            </flux:table.cell>
+                                <flux:table.cell class="text-end">
+                                    <div class="flex justify-end gap-1">
+                                        <flux:button
+                                            size="sm"
+                                            variant="ghost"
+                                            icon="pencil-square"
+                                            :label="__('Editar evento')"
+                                            wire:click="edit({{ $history['id'] }})"
+                                        />
+                                        <flux:button
+                                            size="sm"
+                                            variant="ghost"
+                                            icon="trash"
+                                            :label="__('Eliminar evento')"
+                                            wire:click="confirmDelete({{ $history['id'] }})"
+                                        />
+                                    </div>
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @endforeach
+                    </flux:table.rows>
+                </flux:table>
 
-                            <flux:table.cell class="text-end">
-                                <div class="flex justify-end gap-1">
-                                    <flux:button
-                                        size="sm"
-                                        variant="ghost"
-                                        icon="pencil-square"
-                                        :label="__('Editar evento')"
-                                        wire:click="edit({{ $history['id'] }})"
-                                    />
-                                    <flux:button
-                                        size="sm"
-                                        variant="ghost"
-                                        icon="trash"
-                                        :label="__('Eliminar evento')"
-                                        wire:click="confirmDelete({{ $history['id'] }})"
-                                    />
-                                </div>
-                            </flux:table.cell>
-                        </flux:table.row>
-                    @endforeach
-                </flux:table.rows>
-            </flux:table>
-
-            <x-backoffice.pagination :meta="$meta" />
-        </div>
-    @endif
-
-    <flux:modal name="history-form" class="w-full md:w-[32rem]">
-        <form wire:submit="save" class="space-y-6">
-            <div>
-                <flux:heading size="lg">{{ __('Editar evento del historial') }}</flux:heading>
-                <flux:text class="mt-1">
-                    {{ __('Un evento no se puede mover a otro pedido: para eso, bórralo y créalo donde corresponda.') }}
-                </flux:text>
+                <x-backoffice.pagination :meta="$meta" />
             </div>
+        @endif
+    </x-backoffice.busy>
 
+    <x-backoffice.modal
+        name="history-form"
+        size="wide"
+        :heading="__('Editar evento del historial')"
+        :description="__('Un evento no se puede mover a otro pedido: para eso, bórralo y créalo donde corresponda.')"
+    >
+        <form wire:submit="save" class="space-y-6">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <flux:field>
                     <flux:label>{{ __('Estado') }}</flux:label>
@@ -374,26 +402,26 @@ class extends BackofficeComponent
                 </flux:button>
             </div>
         </form>
-    </flux:modal>
+    </x-backoffice.modal>
 
-    <flux:modal name="history-delete" class="w-full md:w-96">
-        <div class="space-y-6">
-            <div>
-                <flux:heading size="lg">{{ __('Eliminar evento') }}</flux:heading>
-                <flux:text class="mt-1">
-                    {{ __('El evento desaparecerá de la línea de tiempo del pedido. No se puede deshacer.') }}
-                </flux:text>
-            </div>
+    {{-- El modal se abre desde una fila y la tapa: sin decir de qué evento
+         hablamos, confirmar es un acto de fe. --}}
+    <x-backoffice.modal
+        name="history-delete"
+        size="narrow"
+        :heading="__('Eliminar evento')"
+        :description="$this->deletingLabel() !== ''
+            ? __('El evento de :evento desaparecerá de la línea de tiempo del pedido. No se puede deshacer.', ['evento' => $this->deletingLabel()])
+            : __('El evento desaparecerá de la línea de tiempo del pedido. No se puede deshacer.')"
+    >
+        <div class="flex justify-end gap-2">
+            <flux:modal.close>
+                <flux:button variant="ghost">{{ __('Cancelar') }}</flux:button>
+            </flux:modal.close>
 
-            <div class="flex justify-end gap-2">
-                <flux:modal.close>
-                    <flux:button variant="ghost">{{ __('Cancelar') }}</flux:button>
-                </flux:modal.close>
-
-                <flux:button variant="danger" wire:click="destroy" wire:loading.attr="disabled" wire:target="destroy">
-                    {{ __('Eliminar') }}
-                </flux:button>
-            </div>
+            <flux:button variant="danger" wire:click="destroy" wire:loading.attr="disabled" wire:target="destroy">
+                {{ __('Eliminar') }}
+            </flux:button>
         </div>
-    </flux:modal>
+    </x-backoffice.modal>
 </div>

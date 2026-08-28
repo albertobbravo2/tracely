@@ -3,7 +3,10 @@
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-gris-050 dark:bg-[#10262B]">
+    {{-- `backoffice` no pinta nada por sí sola: es el ámbito con el que app.css
+         lleva las tablas y los diálogos de Flux a la paleta de marca sin tocar
+         el resto de la app. --}}
+    <body class="backoffice min-h-screen bg-gris-050 dark:bg-[#10262B]">
         {{-- Un único sidebar para las dos anchuras: `collapsible="mobile"` lo
              convierte en panel deslizante por debajo de lg, y lo abre el toggle
              de la cabecera. Mismo patrón que layouts/app/sidebar.blade.php, con

@@ -10,14 +10,14 @@
     // pendiente o cualquier estado que no reconozcamos.
     $case = ShipmentStatus::tryFrom((string) $status);
 
-    $classes = match ($case) {
-        ShipmentStatus::Entregado => '!bg-ok-fondo !text-ok-fuerte',
-        ShipmentStatus::EnTransito, ShipmentStatus::EnAduana => '!bg-azul-050 !text-azul-800',
-        ShipmentStatus::Incidencia => '!bg-alerta-fondo !text-alerta-fuerte',
-        default => '!bg-gris-050 !text-gris-600',
+    $tone = match ($case) {
+        ShipmentStatus::Entregado => 'ok',
+        ShipmentStatus::EnTransito, ShipmentStatus::EnAduana => 'azul',
+        ShipmentStatus::Incidencia => 'alerta',
+        default => 'gris',
     };
 @endphp
 
-<flux:badge rounded size="sm" class="{{ $classes }}">
+<x-backoffice.tone-badge :tone="$tone" {{ $attributes }}>
     {{ $case?->label() ?? __('Estado desconocido') }}
-</flux:badge>
+</x-backoffice.tone-badge>

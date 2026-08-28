@@ -4,6 +4,7 @@ use App\Livewire\Backoffice\BackofficeComponent;
 use Flux\Flux;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
@@ -112,7 +113,14 @@ class extends BackofficeComponent
         $this->editing = $id;
         $this->document_name = $document['document_name'] ?? '';
         $this->status = $document['status'] ?? '';
-        $this->tracking_number = $document['shipment']['tracking_number'] ?? '';
+
+        // `documents.show` devuelve el documento a secas, sin su envío, así que
+        // la guía sale de la fila del listado —que sí la trae por el eager load
+        // de `documents.index`—. Sin esto el campo salía vacío al editar, como
+        // si el documento hubiera perdido su pedido.
+        $this->tracking_number = (string) ($document['shipment']['tracking_number']
+            ?? $this->rowById($this->documents, $id)['shipment']['tracking_number']
+            ?? '');
 
         Flux::modal('document-form')->show();
     }
@@ -262,6 +270,47 @@ class extends BackofficeComponent
         $this->status = '';
         $this->file = null;
     }
+
+    /**
+     * Tono del distintivo de estado de un documento.
+     *
+     * El estado es texto libre en la API —no hay enum detrás, a diferencia del
+     * de los envíos—, así que se reconocen las raíces habituales en castellano
+     * y todo lo demás se queda en gris. Pintarlos todos igual convertía la
+     * columna en un adorno: no distinguía una factura aprobada de una
+     * rechazada.
+     */
+    public function statusTone(?string $status): string
+    {
+        $normalized = Str::lower(Str::ascii(trim((string) $status)));
+
+        return match (true) {
+            Str::contains($normalized, ['aprobad', 'validad', 'aceptad', 'verificad', 'conform']) => 'ok',
+            Str::contains($normalized, ['rechazad', 'denegad', 'caducad', 'error', 'incidencia', 'invalid']) => 'alerta',
+            Str::contains($normalized, ['pendiente', 'revis', 'proces', 'tramit', 'espera']) => 'azul',
+            default => 'gris',
+        };
+    }
+
+    /**
+     * Estado del documento tal y como se pinta: con la inicial en mayúscula, y
+     * con un texto propio cuando viene vacío en vez de un distintivo mudo.
+     */
+    public function statusLabel(?string $status): string
+    {
+        $status = trim((string) $status);
+
+        return $status === '' ? __('Sin estado') : Str::ucfirst($status);
+    }
+
+    /**
+     * Nombre del documento pendiente de borrar, para que el modal de
+     * confirmación diga cuál es en vez de un genérico "el documento".
+     */
+    public function deletingLabel(): string
+    {
+        return (string) ($this->rowById($this->documents, $this->deleting)['document_name'] ?? '');
+    }
 };
 ?>
 
@@ -277,120 +326,127 @@ class extends BackofficeComponent
         </x-slot:actions>
     </x-backoffice.heading>
 
-    <flux:input
-        wire:model.live.debounce.400ms="trackingFilter"
-        icon="magnifying-glass"
-        class="sm:max-w-sm"
-        :placeholder="__('Filtrar por número de guía exacto')"
+    <x-backoffice.search
+        model="trackingFilter"
         :label="__('Filtrar por guía')"
-        label:class="sr-only"
+        :placeholder="__('Filtrar por número de guía exacto')"
     />
 
     @if ($errorMessage)
-        <x-backoffice.alert :message="$errorMessage" />
+        <x-backoffice.alert :message="$errorMessage" retry="retry" />
     @endif
 
-    @if (empty($documents))
-        @if (! $errorMessage)
-            <x-backoffice.empty
-                icon="document-text"
-                :heading="__('No hay documentos que mostrar')"
-                :text="filled($trackingFilter)
-                    ? __('Ese pedido no tiene documentos adjuntos.')
-                    : __('Todavía no se ha subido ningún documento.')"
-            >
-                <x-slot:actions>
-                    <flux:button variant="primary" icon="plus" wire:click="create">{{ __('Subir documento') }}</flux:button>
-                </x-slot:actions>
-            </x-backoffice.empty>
-        @endif
-    @else
-        <div class="space-y-4">
-            <flux:table>
-                <flux:table.columns>
-                    <flux:table.column>{{ __('Documento') }}</flux:table.column>
-                    <flux:table.column class="max-sm:hidden">{{ __('Guía') }}</flux:table.column>
-                    <flux:table.column class="max-md:hidden">{{ __('Estado') }}</flux:table.column>
-                    <flux:table.column class="text-end">{{ __('Acciones') }}</flux:table.column>
-                </flux:table.columns>
+    <x-backoffice.busy target="trackingFilter, nextPage, previousPage, retry">
+        @if (empty($documents))
+            @if (! $errorMessage)
+                <x-backoffice.empty
+                    icon="document-text"
+                    :heading="__('No hay documentos que mostrar')"
+                    :text="filled($trackingFilter)
+                        ? __('Ese pedido no tiene documentos adjuntos.')
+                        : __('Todavía no se ha subido ningún documento.')"
+                >
+                    <x-slot:actions>
+                        <flux:button variant="primary" icon="plus" wire:click="create">{{ __('Subir documento') }}</flux:button>
+                    </x-slot:actions>
+                </x-backoffice.empty>
+            @endif
+        @else
+            <div class="space-y-4">
+                <flux:table>
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Documento') }}</flux:table.column>
+                        <flux:table.column class="max-sm:hidden">{{ __('Guía') }}</flux:table.column>
+                        <flux:table.column class="max-md:hidden">{{ __('Estado') }}</flux:table.column>
+                        <flux:table.column class="text-end">{{ __('Acciones') }}</flux:table.column>
+                    </flux:table.columns>
 
-                <flux:table.rows>
-                    @foreach ($documents as $document)
-                        <flux:table.row :key="$document['id']">
-                            <flux:table.cell>
-                                <div class="flex items-center gap-3">
-                                    <flux:icon name="paper-clip" variant="outline" class="size-4 shrink-0 text-gris-400 dark:text-azul-200" />
+                    <flux:table.rows>
+                        @foreach ($documents as $document)
+                            <flux:table.row :key="$document['id']">
+                                <flux:table.cell>
+                                    <div class="flex items-center gap-3">
+                                        <flux:icon name="paper-clip" variant="outline" class="size-4 shrink-0 text-gris-400 dark:text-azul-200" />
 
-                                    <div>
-                                        <span class="font-semibold text-gris-900 dark:text-blanco">
-                                            {{ $document['document_name'] }}
-                                        </span>
+                                        {{-- `min-w-0` para que el truncado de dentro
+                                             tenga contra qué truncar: sin él un nombre
+                                             de fichero largo ensancha la celda y empuja
+                                             las acciones fuera de la pantalla. --}}
+                                        <div class="min-w-0">
+                                            <span class="block truncate font-semibold text-gris-900 dark:text-blanco">
+                                                {{ $document['document_name'] }}
+                                            </span>
 
-                                        <span class="block text-sm text-gris-600 sm:hidden dark:text-azul-200">
-                                            {{ $document['shipment']['tracking_number'] ?? '—' }}
-                                        </span>
+                                            <span class="block truncate text-sm text-gris-600 sm:hidden dark:text-azul-200">
+                                                {{ $document['shipment']['tracking_number'] ?? '—' }}
+                                            </span>
+
+                                            {{-- El estado tiene columna propia desde md;
+                                                 por debajo se pliega aquí en vez de
+                                                 desaparecer. --}}
+                                            <span class="mt-1 block md:hidden">
+                                                <x-backoffice.tone-badge :tone="$this->statusTone($document['status'] ?? null)">
+                                                    {{ $this->statusLabel($document['status'] ?? null) }}
+                                                </x-backoffice.tone-badge>
+                                            </span>
+                                        </div>
                                     </div>
-                                </div>
-                            </flux:table.cell>
+                                </flux:table.cell>
 
-                            <flux:table.cell class="whitespace-nowrap max-sm:hidden">
-                                {{ $document['shipment']['tracking_number'] ?? '—' }}
-                            </flux:table.cell>
+                                <flux:table.cell class="whitespace-nowrap max-sm:hidden">
+                                    {{ $document['shipment']['tracking_number'] ?? '—' }}
+                                </flux:table.cell>
 
-                            <flux:table.cell class="max-md:hidden">
-                                <flux:badge rounded size="sm" class="!bg-gris-050 !text-gris-600">
-                                    {{ $document['status'] }}
-                                </flux:badge>
-                            </flux:table.cell>
+                                <flux:table.cell class="max-md:hidden">
+                                    <x-backoffice.tone-badge :tone="$this->statusTone($document['status'] ?? null)">
+                                        {{ $this->statusLabel($document['status'] ?? null) }}
+                                    </x-backoffice.tone-badge>
+                                </flux:table.cell>
 
-                            <flux:table.cell class="text-end">
-                                <div class="flex justify-end gap-1">
-                                    {{-- Descarga directa del navegador: la petición
-                                         lleva la cookie de sesión, y `statefulApi()`
-                                         hace que el guard sanctum la reconozca. --}}
-                                    <flux:button
-                                        size="sm"
-                                        variant="ghost"
-                                        icon="arrow-down-tray"
-                                        :label="__('Descargar documento')"
-                                        :href="$document['download_url']"
-                                    />
-                                    <flux:button
-                                        size="sm"
-                                        variant="ghost"
-                                        icon="pencil-square"
-                                        :label="__('Editar documento')"
-                                        wire:click="edit({{ $document['id'] }})"
-                                    />
-                                    <flux:button
-                                        size="sm"
-                                        variant="ghost"
-                                        icon="trash"
-                                        :label="__('Eliminar documento')"
-                                        wire:click="confirmDelete({{ $document['id'] }})"
-                                    />
-                                </div>
-                            </flux:table.cell>
-                        </flux:table.row>
-                    @endforeach
-                </flux:table.rows>
-            </flux:table>
+                                <flux:table.cell class="text-end">
+                                    <div class="flex justify-end gap-1">
+                                        {{-- Descarga directa del navegador: la petición
+                                             lleva la cookie de sesión, y `statefulApi()`
+                                             hace que el guard sanctum la reconozca. --}}
+                                        <flux:button
+                                            size="sm"
+                                            variant="ghost"
+                                            icon="arrow-down-tray"
+                                            :label="__('Descargar documento')"
+                                            :href="$document['download_url']"
+                                        />
+                                        <flux:button
+                                            size="sm"
+                                            variant="ghost"
+                                            icon="pencil-square"
+                                            :label="__('Editar documento')"
+                                            wire:click="edit({{ $document['id'] }})"
+                                        />
+                                        <flux:button
+                                            size="sm"
+                                            variant="ghost"
+                                            icon="trash"
+                                            :label="__('Eliminar documento')"
+                                            wire:click="confirmDelete({{ $document['id'] }})"
+                                        />
+                                    </div>
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @endforeach
+                    </flux:table.rows>
+                </flux:table>
 
-            <x-backoffice.pagination :meta="$meta" />
-        </div>
-    @endif
-
-    <flux:modal name="document-form" class="w-full md:w-[32rem]">
-        <form wire:submit="save" class="space-y-6">
-            <div>
-                <flux:heading size="lg">
-                    {{ $editing === null ? __('Subir documento') : __('Editar documento') }}
-                </flux:heading>
-                <flux:text class="mt-1">
-                    {{ __('Formatos admitidos: PDF, JPG y PNG, hasta 10 MB.') }}
-                </flux:text>
+                <x-backoffice.pagination :meta="$meta" />
             </div>
+        @endif
+    </x-backoffice.busy>
 
+    <x-backoffice.modal
+        name="document-form"
+        :heading="$editing === null ? __('Subir documento') : __('Editar documento')"
+        :description="__('Formatos admitidos: PDF, JPG y PNG, hasta 10 MB.')"
+    >
+        <form wire:submit="save" class="space-y-6">
             <div class="space-y-4">
                 <flux:field>
                     <flux:label>{{ __('Número de guía del pedido') }}</flux:label>
@@ -421,7 +477,9 @@ class extends BackofficeComponent
                     @endif
                     <flux:error name="file" />
 
-                    <div wire:loading wire:target="file">
+                    <div class="hidden items-center gap-2" wire:loading.flex wire:target="file">
+                        <flux:icon name="loading" variant="micro" class="text-azul-600 dark:text-azul-200" />
+
                         <flux:text class="text-gris-600 dark:text-azul-100">{{ __('Subiendo fichero...') }}</flux:text>
                     </div>
                 </flux:field>
@@ -438,26 +496,26 @@ class extends BackofficeComponent
                 </flux:button>
             </div>
         </form>
-    </flux:modal>
+    </x-backoffice.modal>
 
-    <flux:modal name="document-delete" class="w-full md:w-96">
-        <div class="space-y-6">
-            <div>
-                <flux:heading size="lg">{{ __('Eliminar documento') }}</flux:heading>
-                <flux:text class="mt-1">
-                    {{ __('Se borrará el registro y también su fichero del disco. No se puede deshacer.') }}
-                </flux:text>
-            </div>
+    {{-- El modal se abre desde una fila y la tapa: sin nombrar el fichero,
+         confirmar es un acto de fe. --}}
+    <x-backoffice.modal
+        name="document-delete"
+        size="narrow"
+        :heading="__('Eliminar documento')"
+        :description="$this->deletingLabel() !== ''
+            ? __('Se borrará :documento y también su fichero del disco. No se puede deshacer.', ['documento' => $this->deletingLabel()])
+            : __('Se borrará el registro y también su fichero del disco. No se puede deshacer.')"
+    >
+        <div class="flex justify-end gap-2">
+            <flux:modal.close>
+                <flux:button variant="ghost">{{ __('Cancelar') }}</flux:button>
+            </flux:modal.close>
 
-            <div class="flex justify-end gap-2">
-                <flux:modal.close>
-                    <flux:button variant="ghost">{{ __('Cancelar') }}</flux:button>
-                </flux:modal.close>
-
-                <flux:button variant="danger" wire:click="destroy" wire:loading.attr="disabled" wire:target="destroy">
-                    {{ __('Eliminar') }}
-                </flux:button>
-            </div>
+            <flux:button variant="danger" wire:click="destroy" wire:loading.attr="disabled" wire:target="destroy">
+                {{ __('Eliminar') }}
+            </flux:button>
         </div>
-    </flux:modal>
+    </x-backoffice.modal>
 </div>

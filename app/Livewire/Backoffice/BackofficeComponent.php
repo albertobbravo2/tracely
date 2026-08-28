@@ -60,6 +60,19 @@ abstract class BackofficeComponent extends Component
     }
 
     /**
+     * Volver a pedir el listado tal y como está.
+     *
+     * Lo llama el botón de `<x-backoffice.alert>`: cuando la API falla, el
+     * listado se queda vacío con su mensaje, y sin esto la única salida era
+     * recargar la página a mano. Público —a diferencia de `loadRows()`— porque
+     * quien lo dispara es la vista.
+     */
+    public function retry(): void
+    {
+        $this->loadRows();
+    }
+
+    /**
      * Volver a la primera página y recargar. Lo llaman los `updatedX()` de los
      * filtros: cambiar el filtro estando en la página 4 dejaría un listado
      * vacío sin que se entienda por qué.
@@ -137,6 +150,31 @@ abstract class BackofficeComponent extends Component
         }
 
         return array_values(array_filter($rows, is_array(...)));
+    }
+
+    /**
+     * Buscar en un listado ya cargado la fila que tiene ese id.
+     *
+     * Lo usan los modales de borrado para poder nombrar lo que se va a borrar:
+     * la fila ya está en pantalla —es desde donde se ha pulsado—, así que no
+     * hace falta volver a pedírsela a la API solo para escribir su nombre.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @return array<string, mixed>
+     */
+    protected function rowById(array $rows, int|string|null $id): array
+    {
+        if ($id === null) {
+            return [];
+        }
+
+        foreach ($rows as $row) {
+            if (($row['id'] ?? null) === $id) {
+                return $row;
+            }
+        }
+
+        return [];
     }
 
     /**

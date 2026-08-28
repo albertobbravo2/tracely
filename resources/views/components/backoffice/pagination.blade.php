@@ -23,6 +23,9 @@
             @endif
         </flux:text>
 
+        {{-- Los botones solo se deshabilitan por su propia navegación: sin el
+             `wire:target` cualquier petición de la pantalla —teclear en el
+             buscador, por ejemplo— los apagaba y encendía a cada pulsación. --}}
         <div class="flex items-center gap-2">
             <flux:button
                 size="sm"
@@ -31,6 +34,7 @@
                 :disabled="$current <= 1"
                 wire:click="previousPage"
                 wire:loading.attr="disabled"
+                wire:target="previousPage, nextPage"
             >
                 {{ __('Anterior') }}
             </flux:button>
@@ -46,6 +50,7 @@
                 :disabled="$current >= $last"
                 wire:click="nextPage"
                 wire:loading.attr="disabled"
+                wire:target="previousPage, nextPage"
             >
                 {{ __('Siguiente') }}
             </flux:button>

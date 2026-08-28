@@ -199,6 +199,15 @@ class extends BackofficeComponent
         $this->phone = '';
         $this->is_active = true;
     }
+
+    /**
+     * Nombre de la empresa pendiente de borrar, para que el modal de
+     * confirmación diga cuál es en vez de un genérico "esta empresa".
+     */
+    public function deletingLabel(): string
+    {
+        return (string) ($this->rowById($this->companies, $this->deleting)['name'] ?? '');
+    }
 };
 ?>
 
@@ -214,114 +223,112 @@ class extends BackofficeComponent
         </x-slot:actions>
     </x-backoffice.heading>
 
-    <flux:input
-        wire:model.live.debounce.400ms="search"
-        icon="magnifying-glass"
-        class="sm:max-w-sm"
-        :placeholder="__('Buscar por nombre, slug o email')"
+    <x-backoffice.search
+        model="search"
         :label="__('Buscar empresas')"
-        label:class="sr-only"
+        :placeholder="__('Buscar por nombre, slug o email')"
     />
 
     @if ($errorMessage)
-        <x-backoffice.alert :message="$errorMessage" />
+        <x-backoffice.alert :message="$errorMessage" retry="retry" />
     @endif
 
-    @if (empty($companies))
-        @if (! $errorMessage)
-            <x-backoffice.empty
-                icon="building-office-2"
-                :heading="__('No hay empresas que mostrar')"
-                :text="filled($search)
-                    ? __('Ninguna empresa coincide con la búsqueda.')
-                    : __('Todavía no se ha dado de alta ninguna empresa.')"
-            >
-                <x-slot:actions>
-                    <flux:button variant="primary" icon="plus" wire:click="create">{{ __('Nueva empresa') }}</flux:button>
-                </x-slot:actions>
-            </x-backoffice.empty>
-        @endif
-    @else
-        <div class="space-y-4">
-            <flux:table>
-                <flux:table.columns>
-                    <flux:table.column>{{ __('Empresa') }}</flux:table.column>
-                    <flux:table.column class="max-md:hidden">{{ __('Contacto') }}</flux:table.column>
-                    <flux:table.column class="max-sm:hidden">{{ __('Teléfono') }}</flux:table.column>
-                    <flux:table.column class="max-sm:hidden">{{ __('Estado') }}</flux:table.column>
-                    <flux:table.column class="text-end">{{ __('Acciones') }}</flux:table.column>
-                </flux:table.columns>
+    <x-backoffice.busy target="search, nextPage, previousPage, retry">
+        @if (empty($companies))
+            @if (! $errorMessage)
+                <x-backoffice.empty
+                    icon="building-office-2"
+                    :heading="__('No hay empresas que mostrar')"
+                    :text="filled($search)
+                        ? __('Ninguna empresa coincide con la búsqueda.')
+                        : __('Todavía no se ha dado de alta ninguna empresa.')"
+                >
+                    <x-slot:actions>
+                        <flux:button variant="primary" icon="plus" wire:click="create">{{ __('Nueva empresa') }}</flux:button>
+                    </x-slot:actions>
+                </x-backoffice.empty>
+            @endif
+        @else
+            <div class="space-y-4">
+                <flux:table>
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Empresa') }}</flux:table.column>
+                        <flux:table.column class="max-md:hidden">{{ __('Contacto') }}</flux:table.column>
+                        <flux:table.column class="max-sm:hidden">{{ __('Teléfono') }}</flux:table.column>
+                        <flux:table.column class="max-sm:hidden">{{ __('Estado') }}</flux:table.column>
+                        <flux:table.column class="text-end">{{ __('Acciones') }}</flux:table.column>
+                    </flux:table.columns>
 
-                <flux:table.rows>
-                    @foreach ($companies as $company)
-                        <flux:table.row :key="$company['id']">
-                            <flux:table.cell>
-                                <span class="font-semibold text-gris-900 dark:text-blanco">{{ $company['name'] }}</span>
-                                <span class="block text-sm text-gris-600 dark:text-azul-200">{{ $company['slug'] }}</span>
+                    <flux:table.rows>
+                        @foreach ($companies as $company)
+                            @php
+                                // El mismo distintivo se pinta dos veces —plegado bajo el
+                                // nombre en móvil y en su propia columna desde sm—, así
+                                // que tono y texto se deciden una sola vez.
+                                $activa = (bool) ($company['is_active'] ?? false);
+                            @endphp
 
-                                {{-- En móvil solo caben dos columnas sin empujar las
-                                     acciones fuera de pantalla. --}}
-                                <span class="mt-1 block sm:hidden">
-                                    @if ($company['is_active'])
-                                        <flux:badge rounded size="sm" class="!bg-ok-fondo !text-ok-fuerte">{{ __('Activa') }}</flux:badge>
-                                    @else
-                                        <flux:badge rounded size="sm" class="!bg-gris-050 !text-gris-600">{{ __('Inactiva') }}</flux:badge>
-                                    @endif
-                                </span>
-                            </flux:table.cell>
+                            <flux:table.row :key="$company['id']">
+                                <flux:table.cell>
+                                    <span class="font-semibold text-gris-900 dark:text-blanco">{{ $company['name'] }}</span>
+                                    <span class="block text-sm text-gris-600 dark:text-azul-200">{{ $company['slug'] }}</span>
 
-                            <flux:table.cell class="max-md:hidden">{{ $company['contact_email'] ?: '—' }}</flux:table.cell>
+                                    {{-- En móvil solo caben dos columnas sin empujar las
+                                         acciones fuera de pantalla. --}}
+                                    <span class="mt-1 block sm:hidden">
+                                        <x-backoffice.tone-badge :tone="$activa ? 'ok' : 'gris'">
+                                            {{ $activa ? __('Activa') : __('Inactiva') }}
+                                        </x-backoffice.tone-badge>
+                                    </span>
+                                </flux:table.cell>
 
-                            <flux:table.cell class="whitespace-nowrap max-sm:hidden">
-                                {{ $company['phone'] ?: '—' }}
-                            </flux:table.cell>
+                                <flux:table.cell class="max-md:hidden">{{ $company['contact_email'] ?: '—' }}</flux:table.cell>
 
-                            <flux:table.cell class="max-sm:hidden">
-                                @if ($company['is_active'])
-                                    <flux:badge rounded size="sm" class="!bg-ok-fondo !text-ok-fuerte">{{ __('Activa') }}</flux:badge>
-                                @else
-                                    <flux:badge rounded size="sm" class="!bg-gris-050 !text-gris-600">{{ __('Inactiva') }}</flux:badge>
-                                @endif
-                            </flux:table.cell>
+                                <flux:table.cell class="whitespace-nowrap max-sm:hidden">
+                                    {{ $company['phone'] ?: '—' }}
+                                </flux:table.cell>
 
-                            <flux:table.cell class="text-end">
-                                <div class="flex justify-end gap-1">
-                                    <flux:button
-                                        size="sm"
-                                        variant="ghost"
-                                        icon="pencil-square"
-                                        :label="__('Editar empresa')"
-                                        wire:click="edit({{ $company['id'] }})"
-                                    />
-                                    <flux:button
-                                        size="sm"
-                                        variant="ghost"
-                                        icon="trash"
-                                        :label="__('Eliminar empresa')"
-                                        wire:click="confirmDelete({{ $company['id'] }})"
-                                    />
-                                </div>
-                            </flux:table.cell>
-                        </flux:table.row>
-                    @endforeach
-                </flux:table.rows>
-            </flux:table>
+                                <flux:table.cell class="max-sm:hidden">
+                                    <x-backoffice.tone-badge :tone="$activa ? 'ok' : 'gris'">
+                                        {{ $activa ? __('Activa') : __('Inactiva') }}
+                                    </x-backoffice.tone-badge>
+                                </flux:table.cell>
 
-            <x-backoffice.pagination :meta="$meta" />
-        </div>
-    @endif
+                                <flux:table.cell class="text-end">
+                                    <div class="flex justify-end gap-1">
+                                        <flux:button
+                                            size="sm"
+                                            variant="ghost"
+                                            icon="pencil-square"
+                                            :label="__('Editar empresa')"
+                                            wire:click="edit({{ $company['id'] }})"
+                                        />
+                                        <flux:button
+                                            size="sm"
+                                            variant="ghost"
+                                            icon="trash"
+                                            :label="__('Eliminar empresa')"
+                                            wire:click="confirmDelete({{ $company['id'] }})"
+                                        />
+                                    </div>
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @endforeach
+                    </flux:table.rows>
+                </flux:table>
 
-    <flux:modal name="company-form" class="w-full md:w-[32rem]">
-        <form wire:submit="save" class="space-y-6">
-            <div>
-                <flux:heading size="lg">
-                    {{ $editing === null ? __('Nueva empresa') : __('Editar empresa') }}
-                </flux:heading>
-                <flux:text class="mt-1">
-                    {{ __('El slug identifica a la empresa y no se puede repetir.') }}
-                </flux:text>
+                <x-backoffice.pagination :meta="$meta" />
             </div>
+        @endif
+    </x-backoffice.busy>
 
+    <x-backoffice.modal
+        name="company-form"
+        size="wide"
+        :heading="$editing === null ? __('Nueva empresa') : __('Editar empresa')"
+        :description="__('El slug identifica a la empresa y no se puede repetir.')"
+    >
+        <form wire:submit="save" class="space-y-6">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <flux:field class="sm:col-span-2">
                     <flux:label>{{ __('Nombre') }}</flux:label>
@@ -365,26 +372,26 @@ class extends BackofficeComponent
                 </flux:button>
             </div>
         </form>
-    </flux:modal>
+    </x-backoffice.modal>
 
-    <flux:modal name="company-delete" class="w-full md:w-96">
-        <div class="space-y-6">
-            <div>
-                <flux:heading size="lg">{{ __('Eliminar empresa') }}</flux:heading>
-                <flux:text class="mt-1">
-                    {{ __('Sus pedidos y sus usuarios no se borran: se quedan sin empresa asignada. No se puede deshacer.') }}
-                </flux:text>
-            </div>
+    {{-- El modal se abre desde una fila y la tapa: sin nombrar la empresa,
+         confirmar es un acto de fe. --}}
+    <x-backoffice.modal
+        name="company-delete"
+        size="narrow"
+        :heading="__('Eliminar empresa')"
+        :description="$this->deletingLabel() !== ''
+            ? __('Se eliminará :empresa. Sus pedidos y sus usuarios no se borran: se quedan sin empresa asignada. No se puede deshacer.', ['empresa' => $this->deletingLabel()])
+            : __('Sus pedidos y sus usuarios no se borran: se quedan sin empresa asignada. No se puede deshacer.')"
+    >
+        <div class="flex justify-end gap-2">
+            <flux:modal.close>
+                <flux:button variant="ghost">{{ __('Cancelar') }}</flux:button>
+            </flux:modal.close>
 
-            <div class="flex justify-end gap-2">
-                <flux:modal.close>
-                    <flux:button variant="ghost">{{ __('Cancelar') }}</flux:button>
-                </flux:modal.close>
-
-                <flux:button variant="danger" wire:click="destroy" wire:loading.attr="disabled" wire:target="destroy">
-                    {{ __('Eliminar') }}
-                </flux:button>
-            </div>
+            <flux:button variant="danger" wire:click="destroy" wire:loading.attr="disabled" wire:target="destroy">
+                {{ __('Eliminar') }}
+            </flux:button>
         </div>
-    </flux:modal>
+    </x-backoffice.modal>
 </div>
