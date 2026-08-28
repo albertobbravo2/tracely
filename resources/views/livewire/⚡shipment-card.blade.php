@@ -171,14 +171,20 @@ new class extends Component
     <div class="flex items-start justify-between gap-4">
         <div>
             <flux:text class="text-gris-600 dark:text-azul-100">{{ __('Guía') }}</flux:text>
-            <flux:heading size="lg" class="text-gris-900 dark:text-blanco">
-                {{ $shipment['tracking_number'] ?? '—' }}
-            </flux:heading>
+
+            {{-- El estado va con la guía, no en la esquina: describe al envío,
+                 igual que el número, y arriba a la derecha solo quedaba apilado
+                 sobre un botón con el que no tiene nada que ver. --}}
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <flux:heading size="lg" class="text-gris-900 dark:text-blanco">
+                    {{ $shipment['tracking_number'] ?? '—' }}
+                </flux:heading>
+
+                <x-backoffice.status-badge :status="$shipment['status'] ?? null" />
+            </div>
         </div>
 
-        <div class="flex shrink-0 flex-col items-end gap-3">
-            <x-backoffice.status-badge :status="$shipment['status'] ?? null" />
-
+        <div class="shrink-0">
             {{-- Solo con sesión: la pivote `shipment_user` cuelga de una cuenta
                  concreta, y un invitado no tiene ninguna. --}}
             @auth
