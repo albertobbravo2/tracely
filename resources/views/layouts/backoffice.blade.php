@@ -11,7 +11,7 @@
              convierte en panel deslizante por debajo de lg, y lo abre el toggle
              de la cabecera. Mismo patrón que layouts/app/sidebar.blade.php, con
              la paleta de marca que ya usa el resto del producto. --}}
-        <flux:sidebar sticky collapsible="mobile" class="border-e border-azul-200 bg-azul-050 dark:border-azul-900 dark:bg-azul-800">
+        <flux:sidebar sticky collapsible="mobile" class="border-e border-azul-200 bg-azul-100 dark:border-azul-900 dark:bg-azul-800">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" href="{{ route('backoffice.shipments') }}" wire:navigate />
                 <flux:sidebar.collapse class="lg:hidden" />
@@ -82,7 +82,7 @@
         </flux:sidebar>
 
         {{-- Cabecera solo de móvil: abre el sidebar y deja a mano la cuenta. --}}
-        <flux:header class="lg:hidden border-b border-azul-200 bg-azul-050 dark:border-azul-900 dark:bg-azul-800">
+        <flux:header class="lg:hidden border-b border-azul-200 bg-azul-100 dark:border-azul-900 dark:bg-azul-800">
             <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
 
             <flux:spacer />
