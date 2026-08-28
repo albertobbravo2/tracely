@@ -327,6 +327,25 @@ class DocumentFormTest extends TestCase
             ->assertSee('Se borrará factura-comercial.pdf');
     }
 
+    public function test_el_enlace_de_descarga_apunta_a_esta_aplicacion(): void
+    {
+        $this->fingirApi([[
+            'id' => 5,
+            'document_name' => 'factura-comercial.pdf',
+            'status' => 'aprobado',
+            // Lo que devuelve la API cuando quien pregunta es el propio
+            // servidor: el host interno, que desde el navegador no es la
+            // aplicación —ahí el puerto 80 no es esta app—.
+            'download_url' => 'http://localhost/api/documents/5/download',
+            'shipment' => ['id' => 42, 'tracking_number' => 'TRC-0000000001'],
+        ]]);
+
+        Livewire::actingAs($this->empleado())
+            ->test('backoffice.documents')
+            ->assertSeeHtml('href="/api/documents/5/download"')
+            ->assertDontSeeHtml('http://localhost/api/documents/5/download');
+    }
+
     public function test_el_estado_del_documento_se_pinta_segun_lo_que_dice(): void
     {
         $componente = Livewire::actingAs($this->empleado())->test('backoffice.documents');

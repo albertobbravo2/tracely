@@ -407,13 +407,24 @@ class extends BackofficeComponent
                                     <div class="flex justify-end gap-1">
                                         {{-- Descarga directa del navegador: la petición
                                              lleva la cookie de sesión, y `statefulApi()`
-                                             hace que el guard sanctum la reconozca. --}}
+                                             hace que el guard sanctum la reconozca.
+
+                                             El enlace se arma aquí y no con el
+                                             `download_url` que devuelve la API: esa URL
+                                             la genera Laravel a partir del host de quien
+                                             pregunta, y quien pregunta es el propio
+                                             servidor por `APP_INTERNAL_URL`, así que
+                                             salía apuntando a `http://localhost` —el
+                                             puerto 80 de dentro del contenedor—, que
+                                             desde el navegador no es la aplicación.
+                                             Relativa, además, para que valga sea cual
+                                             sea el host por el que se entre. --}}
                                         <flux:button
                                             size="sm"
                                             variant="ghost"
                                             icon="arrow-down-tray"
                                             :label="__('Descargar documento')"
-                                            :href="$document['download_url']"
+                                            :href="route('documents.download', ['document' => $document['id']], absolute: false)"
                                         />
                                         <flux:button
                                             size="sm"
