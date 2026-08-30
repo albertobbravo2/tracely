@@ -22,24 +22,24 @@ class DatabaseSeeder extends Seeder
         $this->call(RolesAndPermissionsSeeder::class);
 
         User::create([
-            "name" => "Admin",
-            "email" => "admin@tracely.com",
-            "password" => "admin",
-            "email_verified_at" => now()
-        ])->assignRole('administrador');
+            'name' => 'Super Administrador',
+            'email' => 'superadministrador@tracely.com',
+            'password' => 'superadministrador',
+            'email_verified_at' => now(),
+        ])->assignRole('superadministrador');
 
         User::create([
-            "name" => "Agente",
-            "email" => "agente@tracely.com",
-            "password" => "agente",
-            "email_verified_at" => now()
+            'name' => 'Agente',
+            'email' => 'agente@tracely.com',
+            'password' => 'agente',
+            'email_verified_at' => now(),
         ])->assignRole('agente');
 
         User::create([
-            "name" => "cliente",
-            "email" => "cliente@tracely.com",
-            "password" => "cliente",
-            "email_verified_at" => now()
+            'name' => 'cliente',
+            'email' => 'cliente@tracely.com',
+            'password' => 'cliente',
+            'email_verified_at' => now(),
         ]);
         /*
         User::factory()->create([
