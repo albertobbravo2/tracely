@@ -141,8 +141,9 @@ class ShipmentHistoryFormTest extends TestCase
             ->assertSet('location', 'Centro logístico de Madrid')
             ->assertSet('description', 'Salida del centro logístico.')
             // El input es `datetime-local`, que no entiende el ISO-8601 con
-            // zona que devuelve la API.
-            ->assertSet('recorded_at', '2026-08-20T10:30');
+            // zona que devuelve la API. Y son las 12:30 y no las 10:30 del
+            // fixture porque ese ISO viene en UTC y el proyecto va en Madrid.
+            ->assertSet('recorded_at', '2026-08-20T12:30');
     }
 
     public function test_un_evento_sin_fecha_propone_la_de_ahora(): void
@@ -193,7 +194,7 @@ class ShipmentHistoryFormTest extends TestCase
 
             return $data['status'] === ShipmentStatus::EnAduana->value
                 && $data['location'] === 'Aduana de Lisboa'
-                && $data['recorded_at'] === '2026-08-20T10:30';
+                && $data['recorded_at'] === '2026-08-20T12:30';
         });
     }
 
@@ -265,7 +266,7 @@ class ShipmentHistoryFormTest extends TestCase
             ->call('confirmDelete', 9)
             // Un pedido tiene varios eventos: la guía sola no distingue cuál,
             // así que el modal la acompaña de la fecha.
-            ->assertSee('TRC-0000000001 · 20 ago. 2026 · 10:30');
+            ->assertSee('TRC-0000000001 · 20 ago. 2026 · 12:30');
     }
 
     public function test_el_estado_vacio_lleva_a_la_pantalla_donde_nacen_los_eventos(): void

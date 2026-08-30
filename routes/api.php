@@ -48,6 +48,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('shipments/{shipment:tracking_number}/users', [ShipmentUserController::class, 'destroy'])
         ->name('shipments.users.destroy');
 
+    // Las dos caras de backoffice de esa misma pivote: ver quién sigue un envío
+    // y deshacer el vínculo de cualquiera, no solo el propio. Por eso estas sí
+    // llevan `permission:`, y reutilizan las del pedido —es información suya y
+    // se modifica con él— en vez de estrenar permisos nuevos.
+    Route::get('shipments/{shipment:tracking_number}/users', [ShipmentUserController::class, 'index'])
+        ->middleware('permission:ver pedido')
+        ->name('shipments.users.index');
+
+    Route::delete('shipments/{shipment:tracking_number}/users/{user}', [ShipmentUserController::class, 'detach'])
+        ->middleware('permission:editar pedido')
+        ->name('shipments.users.detach');
+
     // Las empresas no tienen endpoint público: gestionarlas es cosa del
     // superadministrador, que es el único rol con estos permisos.
     Route::get('companies', [CompanyController::class, 'index'])

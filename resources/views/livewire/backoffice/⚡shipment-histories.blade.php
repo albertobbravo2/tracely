@@ -214,7 +214,9 @@ class extends BackofficeComponent
      */
     private function forInput(?string $date): string
     {
-        return ($date ? Carbon::parse($date) : now())->format('Y-m-d\TH:i');
+        // Sin `timezone()` la hora que devuelve la API (UTC) entraría tal cual
+        // en el campo, y guardar sin tocarla movería el evento dos horas atrás.
+        return ($date ? Carbon::parse($date)->timezone(config('app.timezone')) : now())->format('Y-m-d\TH:i');
     }
 
     /**
@@ -230,7 +232,12 @@ class extends BackofficeComponent
 
     public function eventDate(?string $date): string
     {
-        return $date ? Carbon::parse($date)->locale('es')->translatedFormat('j M Y · H:i') : '—';
+        // La API serializa las fechas en UTC (`...Z`) aunque la app viva en
+        // Madrid, así que sin convertir aquí un evento de las 16:40 se leería
+        // como las 14:40.
+        return $date
+            ? Carbon::parse($date)->timezone(config('app.timezone'))->locale('es')->translatedFormat('j M Y · H:i')
+            : '—';
     }
 
     /**

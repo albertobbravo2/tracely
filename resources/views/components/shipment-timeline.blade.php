@@ -34,9 +34,11 @@
                 $meta = collect([
                     $event['location'] ?? null,
                     // locale('es') explícito: APP_LOCALE es 'en' pero la interfaz
-                    // está en español, y sin esto saldría "9 Aug 2026".
+                    // está en español, y sin esto saldría "9 Aug 2026". Y
+                    // timezone() porque la API serializa en UTC aunque la app
+                    // viva en Madrid: sin convertir, las 16:40 se leen 14:40.
                     isset($event['recorded_at'])
-                        ? Carbon::parse($event['recorded_at'])->locale('es')->translatedFormat('j M Y · H:i')
+                        ? Carbon::parse($event['recorded_at'])->timezone(config('app.timezone'))->locale('es')->translatedFormat('j M Y · H:i')
                         : null,
                 ])->filter()->join(' · ');
             @endphp

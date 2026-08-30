@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\ShipmentController;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'home')->name('home');
@@ -18,7 +19,11 @@ Route::middleware(['auth', 'role:agente|administrador|superadministrador'])
     ->group(function () {
         Route::redirect('/', '/backoffice/shipments')->name('index');
 
+
         Route::livewire('shipments', 'backoffice.shipments')->name('shipments');
+        // El nombre no puede ser `shipment-detail`: ese ya es el de la ruta de
+        // arriba, la que entra al controlador.
+        Route::livewire('shipments/{tracking_number}', 'backoffice.shipment-detail')->name('shipments.show');
         Route::livewire('shipment-histories', 'backoffice.shipment-histories')->name('shipment-histories');
         Route::livewire('users', 'backoffice.users')->name('users');
         Route::livewire('documents', 'backoffice.documents')->name('documents');

@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateShipmentRequest;
 use App\Models\Shipment;
 use App\Observers\ShipmentObserver;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
@@ -160,4 +161,13 @@ class ShipmentController extends Controller
 
         return response()->json(status: 204);
     }
+
+    /**
+     * Llevar a la pantalla de detalle de un pedido a partir de su guía.
+     *
+     * No devuelve JSON como el resto del controlador: es la única acción de
+     * cara al navegador, y solo redirige. Que el pedido exista o no lo resuelve
+     * la pantalla de destino, que ya pide el dato a `shipments.show`.
+     */
+
 }

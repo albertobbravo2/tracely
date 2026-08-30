@@ -456,6 +456,18 @@ class extends BackofficeComponent
 
                                 <flux:table.cell class="text-end">
                                     <div class="flex justify-end gap-1">
+                                        {{-- Enlace, no `wire:click`: el detalle es una
+                                             pantalla propia, así que se navega a ella
+                                             (con `wire:navigate`, como el resto del
+                                             backoffice) en vez de abrir un modal. --}}
+                                        <flux:button
+                                            size="sm"
+                                            variant="ghost"
+                                            icon="eye"
+                                            :label="__('Ver pedido')"
+                                            :href="route('backoffice.shipments.show', ['tracking_number' => $shipment['tracking_number']])"
+                                            wire:navigate
+                                        />
                                         <flux:button
                                             size="sm"
                                             variant="ghost"
