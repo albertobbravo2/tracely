@@ -81,7 +81,7 @@ class BackofficeAccessTest extends TestCase
 
         $this->actingAs($empleado)
             ->get(route('backoffice.index'))
-            ->assertRedirect('/backoffice/pedidos');
+            ->assertRedirect('/backoffice/shipments');
     }
 
     public function test_el_sidebar_lista_las_cinco_secciones(): void

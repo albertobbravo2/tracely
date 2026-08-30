@@ -16,13 +16,13 @@ Route::middleware(['auth', 'role:agente|administrador|superadministrador'])
     ->prefix('backoffice')
     ->name('backoffice.')
     ->group(function () {
-        Route::redirect('/', '/backoffice/pedidos')->name('index');
+        Route::redirect('/', '/backoffice/shipments')->name('index');
 
-        Route::livewire('pedidos', 'backoffice.shipments')->name('shipments');
-        Route::livewire('historial', 'backoffice.shipment-histories')->name('shipment-histories');
-        Route::livewire('usuarios', 'backoffice.users')->name('users');
-        Route::livewire('documentos', 'backoffice.documents')->name('documents');
-        Route::livewire('companias', 'backoffice.companies')->name('companies');
+        Route::livewire('shipments', 'backoffice.shipments')->name('shipments');
+        Route::livewire('shipment-histories', 'backoffice.shipment-histories')->name('shipment-histories');
+        Route::livewire('users', 'backoffice.users')->name('users');
+        Route::livewire('documents', 'backoffice.documents')->name('documents');
+        Route::livewire('companies', 'backoffice.companies')->name('companies');
     });
 
 // settings
