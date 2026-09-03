@@ -92,6 +92,16 @@ select:focus[data-flux-control] {
     @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-accent-foreground;
 }
 
+/* Los campos `type="password"` con `viewable` ya traen su propio botón de
+   mostrar/ocultar (icono de ojo) de Flux. Edge añade el suyo propio dentro
+   del input (`::-ms-reveal`/`::-ms-clear`), en la misma esquina, así que
+   quedan dos botones superpuestos. Se desactiva el nativo para que solo se
+   vea el de Flux. */
+input[type='password']::-ms-reveal,
+input[type='password']::-ms-clear {
+    display: none;
+}
+
 /* Backoffice: Flux en la paleta de marca ------------------------------------
 
    <flux:table> y <flux:modal> vienen en la escala `zinc`, que es la de Flux,
