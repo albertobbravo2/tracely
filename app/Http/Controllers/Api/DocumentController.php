@@ -16,6 +16,8 @@ class DocumentController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $actor = $request->user();
+
         $documents = Document::query()
             // El listado del backoffice muestra el número de guía, no el id:
             // sin el eager load cada fila sería una consulta aparte.
@@ -23,6 +25,13 @@ class DocumentController extends Controller
             ->when(
                 $request->integer('shipment_id'),
                 fn ($query, $shipmentId) => $query->where('shipment_id', $shipmentId),
+            )
+            // El documento no tiene su propio `company_id`: se filtra por la
+            // empresa del pedido al que pertenece. Solo para quien no es
+            // superadministrador, que ve los documentos de todas.
+            ->when(
+                ! $actor->hasRole('superadministrador'),
+                fn ($query) => $query->whereRelation('shipment', 'company_id', $actor->company_id),
             )
             ->latest('id')
             ->paginate(15);

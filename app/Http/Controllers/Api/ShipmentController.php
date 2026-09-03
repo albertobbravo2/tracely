@@ -8,7 +8,6 @@ use App\Http\Requests\UpdateShipmentRequest;
 use App\Models\Shipment;
 use App\Observers\ShipmentObserver;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
@@ -24,6 +23,8 @@ class ShipmentController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $actor = $request->user();
+
         $shipments = Shipment::query()
             ->when(
                 $request->string('search')->trim()->value(),
@@ -38,9 +39,16 @@ class ShipmentController extends Controller
                 $request->string('status')->value(),
                 fn ($query, string $status) => $query->where('status', $status),
             )
+            // Quien no es superadministrador solo ve los pedidos de su propia
+            // empresa: el filtro `company_id` de la petición se ignora para
+            // ellos, así no pueden asomarse a otra pidiéndola por parámetro.
             ->when(
-                $request->integer('company_id'),
-                fn ($query, int $companyId) => $query->where('company_id', $companyId),
+                ! $actor->hasRole('superadministrador'),
+                fn ($query) => $query->where('company_id', $actor->company_id),
+                fn ($query) => $query->when(
+                    $request->integer('company_id'),
+                    fn ($query, int $companyId) => $query->where('company_id', $companyId),
+                ),
             )
             ->latest('id')
             ->paginate(15);
@@ -169,5 +177,4 @@ class ShipmentController extends Controller
      * cara al navegador, y solo redirige. Que el pedido exista o no lo resuelve
      * la pantalla de destino, que ya pide el dato a `shipments.show`.
      */
-
 }

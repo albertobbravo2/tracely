@@ -73,13 +73,15 @@ class BackofficeListingsTest extends TestCase
             ->assertJsonCount(2, 'data');
     }
 
-    public function test_los_pedidos_se_filtran_por_empresa(): void
+    public function test_un_superadministrador_puede_filtrar_los_pedidos_por_empresa(): void
     {
         $company = Company::factory()->create();
         Shipment::factory()->create(['company_id' => $company->id]);
         Shipment::factory()->create();
 
-        $this->actingAs($this->empleado())
+        // Solo el superadministrador puede pedir una empresa por parámetro: ver
+        // CompanyScopingTest para el resto de roles, que quedan fijados a la suya.
+        $this->actingAs($this->superadmin())
             ->getJson(route('shipments.index', ['company_id' => $company->id]))
             ->assertOk()
             ->assertJsonCount(1, 'data');

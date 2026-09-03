@@ -55,14 +55,19 @@
                         {{ __('Documentos') }}
                     </flux:sidebar.item>
 
-                    <flux:sidebar.item
-                        icon="building-office-2"
-                        :href="route('backoffice.companies')"
-                        :current="request()->routeIs('backoffice.companies')"
-                        wire:navigate
-                    >
-                        {{ __('Compañías') }}
-                    </flux:sidebar.item>
+                    {{-- Solo el superadministrador gestiona empresas (ver
+                         `RolesAndPermissionsSeeder`): para administrador y agente
+                         el enlace ni se pinta. --}}
+                    @if (auth()->user()->hasRole('superadministrador'))
+                        <flux:sidebar.item
+                            icon="building-office-2"
+                            :href="route('backoffice.companies')"
+                            :current="request()->routeIs('backoffice.companies')"
+                            wire:navigate
+                        >
+                            {{ __('Compañías') }}
+                        </flux:sidebar.item>
+                    @endif
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 

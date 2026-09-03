@@ -84,15 +84,39 @@ class BackofficeAccessTest extends TestCase
             ->assertRedirect('/backoffice/shipments');
     }
 
-    public function test_el_sidebar_lista_las_cinco_secciones(): void
+    public function test_el_sidebar_de_un_superadministrador_lista_las_cinco_secciones(): void
     {
-        $empleado = User::factory()->create()->assignRole('agente');
+        $superadmin = User::factory()->create()->assignRole('superadministrador');
 
-        $this->actingAs($empleado)
+        $this->actingAs($superadmin)
             ->get(route('backoffice.shipments'))
             ->assertOk()
             ->assertSee('Historial de pedidos')
             ->assertSee('Compañías')
             ->assertSee('Documentos');
+    }
+
+    /**
+     * @return list<array{string}>
+     */
+    public static function rolesSinEmpresas(): array
+    {
+        return [
+            'agente' => ['agente'],
+            'administrador' => ['administrador'],
+        ];
+    }
+
+    #[DataProvider('rolesSinEmpresas')]
+    public function test_el_sidebar_no_lista_companias_para_administrador_ni_agente(string $rol): void
+    {
+        $empleado = User::factory()->create()->assignRole($rol);
+
+        $this->actingAs($empleado)
+            ->get(route('backoffice.shipments'))
+            ->assertOk()
+            ->assertSee('Historial de pedidos')
+            ->assertSee('Documentos')
+            ->assertDontSee('Compañías');
     }
 }

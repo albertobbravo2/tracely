@@ -60,6 +60,8 @@ class UserController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $actor = $request->user();
+
         $users = User::query()
             ->with('roles:id,name')
             ->when(
@@ -68,6 +70,13 @@ class UserController extends Controller
                     fn ($query) => $query->where('name', 'ilike', "%{$search}%")
                         ->orWhere('email', 'ilike', "%{$search}%"),
                 ),
+            )
+            // Quien no es superadministrador solo ve las cuentas de su propia
+            // empresa: mismo criterio que ya aplican store()/update() al crear
+            // o editar usuarios.
+            ->when(
+                ! $actor->hasRole('superadministrador'),
+                fn ($query) => $query->where('company_id', $actor->company_id),
             )
             ->latest('id')
             ->paginate(15);
