@@ -7,12 +7,15 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\WithFileUploads;
 
 new
 #[Layout('layouts::backoffice')]
 #[Title('Pedidos')]
 class extends BackofficeComponent
 {
+    use WithFileUploads;
+
     // --- Listado -----------------------------------------------------------
 
     public string $search = '';
@@ -60,6 +63,28 @@ class extends BackofficeComponent
         'location' => '',
         'description' => '',
     ];
+
+    // --- Importación -------------------------------------------------------
+
+    /**
+     * Fichero CSV a importar.
+     *
+     * Se llama igual que el campo de la API (`file`) por lo mismo que el resto
+     * de propiedades del formulario: así los errores de validación que devuelve
+     * el endpoint caen solos en su `<flux:error>` vía `applyApiValidationErrors()`.
+     */
+    public $file = null;
+
+    /**
+     * Informe que devuelve el endpoint: cuántas filas, cuántas creadas y el
+     * detalle de las que fallaron. Null mientras no se haya importado nada.
+     *
+     * @var array<string, mixed>|null
+     */
+    public ?array $importResult = null;
+
+    /** Error de la importación, aparte de `$errorMessage`: se pinta dentro del modal. */
+    public ?string $importError = null;
 
     /** Guía del pedido pendiente de confirmar borrado. */
     public ?string $deleting = null;
@@ -233,6 +258,71 @@ class extends BackofficeComponent
         $this->loadRows();
     }
 
+    // --- Importación -------------------------------------------------------
+
+    public function openImport(): void
+    {
+        $this->resetImport();
+
+        Flux::modal('shipment-import')->show();
+    }
+
+    /**
+     * Subir el CSV al endpoint de importación y quedarse con su informe.
+     *
+     * La validación local es la misma del `ImportShipmentsRequest` y está aquí
+     * solo para no gastar una petición en un fichero que ya sabemos que no vale;
+     * la de verdad, y la de cada fila, sigue siendo la del endpoint.
+     */
+    public function import(): void
+    {
+        $this->resetErrorBag();
+        $this->importError = null;
+        $this->importResult = null;
+
+        $this->validate([
+            'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
+        ], [
+            'file.required' => __('Elige un fichero CSV para importar.'),
+            'file.mimes' => __('El fichero debe ser un CSV.'),
+            'file.max' => __('El fichero no puede superar los 2 MB.'),
+        ]);
+
+        $response = $this->callApi(fn (PendingRequest $api) => $api
+            ->attach('file', $this->file->get(), $this->file->getClientOriginalName())
+            ->post(route('shipments.import', absolute: false)));
+
+        if ($this->applyApiValidationErrors($response)) {
+            return;
+        }
+
+        if ($response === null || $response->failed()) {
+            $this->importError = $this->apiErrorMessage($response, __('No pudimos importar el fichero.'));
+
+            return;
+        }
+
+        $this->importResult = $response->json();
+
+        // El fichero ya está procesado: se suelta para que el modal no invite a
+        // reenviar lo mismo, pero el informe se queda en pantalla.
+        $this->reset('file');
+
+        if (($this->importResult['created'] ?? 0) > 0) {
+            Flux::toast(variant: 'success', text: __('Se han importado :creados pedidos.', [
+                'creados' => $this->importResult['created'],
+            ]));
+
+            $this->resetAndReload();
+        }
+    }
+
+    public function resetImport(): void
+    {
+        $this->resetErrorBag();
+        $this->reset('file', 'importResult', 'importError');
+    }
+
     // --- Borrado -----------------------------------------------------------
 
     public function confirmDelete(string $trackingNumber): void
@@ -367,6 +457,10 @@ class extends BackofficeComponent
         :subheading="__('Alta, edición y baja de envíos. Al crear uno se registra también su primer evento de historial.')"
     >
         <x-slot:actions>
+            <flux:button icon="arrow-up-tray" wire:click="openImport">
+                {{ __('Importar CSV') }}
+            </flux:button>
+
             <flux:button variant="primary" icon="plus" wire:click="create">
                 {{ __('Nuevo pedido') }}
             </flux:button>
@@ -412,12 +506,12 @@ class extends BackofficeComponent
             <div class="space-y-4">
                 <flux:table>
                     <flux:table.columns>
-                        <flux:table.column>{{ __('Guía') }}</flux:table.column>
-                        <flux:table.column class="max-md:hidden">{{ __('Destinatario') }}</flux:table.column>
-                        <flux:table.column class="max-lg:hidden">{{ __('Ruta') }}</flux:table.column>
-                        <flux:table.column class="max-lg:hidden">{{ __('Entrega estimada') }}</flux:table.column>
-                        <flux:table.column class="max-sm:hidden">{{ __('Estado') }}</flux:table.column>
-                        <flux:table.column class="text-end">{{ __('Acciones') }}</flux:table.column>
+                        <flux:table.column align="center">{{ __('Guía') }}</flux:table.column>
+                        <flux:table.column align="center" class="max-md:hidden">{{ __('Destinatario') }}</flux:table.column>
+                        <flux:table.column align="center" class="max-lg:hidden">{{ __('Ruta') }}</flux:table.column>
+                        <flux:table.column align="center" class="max-lg:hidden">{{ __('Entrega estimada') }}</flux:table.column>
+                        <flux:table.column align="center" class="max-sm:hidden">{{ __('Estado') }}</flux:table.column>
+                        <flux:table.column align="center">{{ __('Acciones') }}</flux:table.column>
                     </flux:table.columns>
 
                     <flux:table.rows>
@@ -450,12 +544,12 @@ class extends BackofficeComponent
                                     {{ $this->shortDate($shipment['estimated_delivery_date'] ?? null) }}
                                 </flux:table.cell>
 
-                                <flux:table.cell class="max-sm:hidden">
+                                <flux:table.cell align="center" class="max-sm:hidden">
                                     <x-backoffice.status-badge :status="$shipment['status'] ?? null" />
                                 </flux:table.cell>
 
-                                <flux:table.cell class="text-end">
-                                    <div class="flex justify-end gap-1">
+                                <flux:table.cell align="center">
+                                    <div class="flex justify-center gap-1">
                                         {{-- Enlace, no `wire:click`: el detalle es una
                                              pantalla propia, así que se navega a ella
                                              (con `wire:navigate`, como el resto del
@@ -614,5 +708,114 @@ class extends BackofficeComponent
                 {{ __('Eliminar') }}
             </flux:button>
         </div>
+    </x-backoffice.modal>
+
+    <x-backoffice.modal
+        name="shipment-import"
+        size="wide"
+        :heading="__('Importar pedidos')"
+        :description="__('Alta masiva desde un CSV: cada fila es un pedido. Las filas que fallen se listan al terminar, sin detener a las demás.')"
+        wire:close="resetImport"
+    >
+        <form wire:submit="import" class="space-y-6">
+            {{-- La cabecera exacta que espera el endpoint. Es lo primero que
+                 hace falta para preparar el fichero, así que va en el modal y
+                 no en una ayuda aparte. --}}
+            <div class="rounded-xl border border-gris-200 bg-gris-050 px-4 py-3 dark:border-azul-800 dark:bg-azul-900">
+                <flux:text class="font-medium text-gris-900 dark:text-blanco">{{ __('Columnas del fichero') }}</flux:text>
+
+                <flux:text class="mt-1 text-gris-600 dark:text-azul-100">
+                    {{ __('Obligatorias:') }}
+                    <span class="font-mono">tracking_number, receiver_name, origin, destination, estimated_delivery_date</span>
+                </flux:text>
+
+                <flux:text class="mt-1 text-gris-600 dark:text-azul-100">
+                    {{ __('Opcionales:') }}
+                    <span class="font-mono">status, history_location, history_description</span>
+                </flux:text>
+            </div>
+
+            <flux:text class="text-gris-600 dark:text-azul-100">
+                {{ __('La fecha admite 2026-10-01 o 01/10/2026. El remitente y la empresa salen de tu cuenta, no del fichero.
+                Máximo 1.000 filas por fichero.') }}
+            </flux:text>
+
+            <flux:field>
+                <flux:label>{{ __('Fichero CSV') }}</flux:label>
+                <flux:input type="file" wire:model="file" accept=".csv,text/csv" />
+                <flux:error name="file" />
+
+                <flux:text wire:loading wire:target="file" class="text-gris-600 dark:text-azul-100">
+                    {{ __('Subiendo el fichero...') }}
+                </flux:text>
+            </flux:field>
+
+            @if ($importError)
+                <x-backoffice.alert :message="$importError" />
+            @endif
+
+            @if ($importResult)
+                <div class="space-y-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <x-backoffice.tone-badge tone="gris">
+                            {{ __(':filas filas leídas', ['filas' => $importResult['total'] ?? 0]) }}
+                        </x-backoffice.tone-badge>
+
+                        <x-backoffice.tone-badge tone="ok">
+                            {{ __(':creados creados', ['creados' => $importResult['created'] ?? 0]) }}
+                        </x-backoffice.tone-badge>
+
+                        @if (($importResult['failed'] ?? 0) > 0)
+                            <x-backoffice.tone-badge tone="alerta">
+                                {{ __(':fallidos con error', ['fallidos' => $importResult['failed']]) }}
+                            </x-backoffice.tone-badge>
+                        @endif
+                    </div>
+
+                    {{-- Las filas rechazadas, con su número de línea del fichero:
+                         es lo que permite corregirlas y volver a subirlas. --}}
+                    @if (! empty($importResult['errors']))
+                        <div class="max-h-64 overflow-y-auto">
+                            <flux:table>
+                                <flux:table.columns>
+                                    <flux:table.column align="center">{{ __('Línea') }}</flux:table.column>
+                                    <flux:table.column align="center" class="max-sm:hidden">{{ __('Guía') }}</flux:table.column>
+                                    <flux:table.column align="center">{{ __('Motivo') }}</flux:table.column>
+                                </flux:table.columns>
+
+                                <flux:table.rows>
+                                    @foreach ($importResult['errors'] as $error)
+                                        <flux:table.row :key="'error-'.$error['line']">
+                                            <flux:table.cell>{{ $error['line'] }}</flux:table.cell>
+
+                                            <flux:table.cell class="max-sm:hidden">
+                                                {{ $error['tracking_number'] ?: '—' }}
+                                            </flux:table.cell>
+
+                                            <flux:table.cell>
+                                                <span class="text-alerta-fuerte dark:text-alerta-claro">
+                                                    {{ implode(' ', $error['errors'] ?? []) }}
+                                                </span>
+                                            </flux:table.cell>
+                                        </flux:table.row>
+                                    @endforeach
+                                </flux:table.rows>
+                            </flux:table>
+                        </div>
+                    @endif
+                </div>
+            @endif
+
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">{{ $importResult ? __('Cerrar') : __('Cancelar') }}</flux:button>
+                </flux:modal.close>
+
+                <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="import, file">
+                    <span wire:loading.remove wire:target="import">{{ __('Importar') }}</span>
+                    <span wire:loading wire:target="import">{{ __('Importando...') }}</span>
+                </flux:button>
+            </div>
+        </form>
     </x-backoffice.modal>
 </div>

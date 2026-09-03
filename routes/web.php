@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Api\ShipmentController;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'home')->name('home');
@@ -18,7 +17,6 @@ Route::middleware(['auth', 'role:agente|administrador|superadministrador'])
     ->name('backoffice.')
     ->group(function () {
         Route::redirect('/', '/backoffice/shipments')->name('index');
-
 
         Route::livewire('shipments', 'backoffice.shipments')->name('shipments');
         // El nombre no puede ser `shipment-detail`: ese ya es el de la ruta de

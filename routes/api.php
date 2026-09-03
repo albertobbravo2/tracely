@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\ShipmentController;
 use App\Http\Controllers\Api\ShipmentHistoryController;
+use App\Http\Controllers\Api\ShipmentImportController;
 use App\Http\Controllers\Api\ShipmentUserController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +31,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('shipments', [ShipmentController::class, 'store'])
         ->middleware('permission:crear pedido')
         ->name('shipments.store');
+
+    // Alta masiva desde un CSV. Mismo permiso que el alta de uno en uno: es
+    // la misma acción, solo que repetida.
+    Route::post('shipments/import', ShipmentImportController::class)
+        ->middleware('permission:crear pedido')
+        ->name('shipments.import');
 
     Route::match(['put', 'patch'], 'shipments/{shipment:tracking_number}', [ShipmentController::class, 'update'])
         ->middleware('permission:editar pedido')
