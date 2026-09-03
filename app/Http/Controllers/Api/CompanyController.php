@@ -42,8 +42,10 @@ class CompanyController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['required', 'string', 'max:255', 'unique:companies,slug'],
             'contact_email' => ['nullable', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:255', 'regex:/^\+?[0-9\s\-()]{6,20}$/'],
             'is_active' => ['boolean'],
+        ], [
+            'phone.regex' => __('El teléfono solo puede contener dígitos, espacios, guiones, paréntesis y un "+" inicial.'),
         ]);
 
         return response()->json(Company::create($data), 201);
@@ -72,8 +74,10 @@ class CompanyController extends Controller
                 Rule::unique('companies', 'slug')->ignore($company),
             ],
             'contact_email' => ['nullable', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:255', 'regex:/^\+?[0-9\s\-()]{6,20}$/'],
             'is_active' => ['boolean'],
+        ], [
+            'phone.regex' => __('El teléfono solo puede contener dígitos, espacios, guiones, paréntesis y un "+" inicial.'),
         ]);
 
         $company->update($data);
