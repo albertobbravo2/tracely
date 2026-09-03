@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Enums\ShipmentStatus;
+use App\Models\Document;
 use App\Models\Shipment;
 use App\Models\ShipmentHistory;
 use App\Models\User;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
@@ -30,6 +32,8 @@ class ShipmentCardTest extends TestCase
         parent::setUp();
 
         Http::preventStrayRequests();
+
+        $this->seed(RolesAndPermissionsSeeder::class);
     }
 
     // ---------------------------------------------------------------
@@ -178,6 +182,78 @@ class ShipmentCardTest extends TestCase
         // vinculado: es la pantalla de los envíos propios.
         $this->assertSame(2, substr_count($html, __('Eliminar')));
         $this->assertStringNotContainsString(__('Vincular'), $html);
+    }
+
+    // ---------------------------------------------------------------
+    // Documentos: solo para quien tiene rol de backoffice
+    // ---------------------------------------------------------------
+
+    public function test_un_cliente_sin_rol_no_ve_documentos_aunque_existan(): void
+    {
+        $cliente = User::factory()->create();
+        $shipment = Shipment::factory()->create();
+        Document::factory()->forShipment($shipment)->create(['document_name' => 'Factura oculta.pdf']);
+
+        // Sin `Http::fake()` para "/api/documents": si el componente llegara a
+        // pedirlos, `preventStrayRequests()` tumbaría el test. Que pase es la
+        // prueba de que un cliente sin rol ni siquiera los pregunta.
+        Livewire::actingAs($cliente)
+            ->test('shipment-card', ['shipment' => $this->payload($shipment)])
+            ->assertDontSee('Factura oculta.pdf')
+            ->assertDontSee(__('Documentos'));
+    }
+
+    public function test_un_invitado_no_ve_documentos_aunque_existan(): void
+    {
+        $shipment = Shipment::factory()->create();
+        Document::factory()->forShipment($shipment)->create(['document_name' => 'Factura oculta.pdf']);
+
+        Livewire::test('shipment-card', ['shipment' => $this->payload($shipment)])
+            ->assertDontSee('Factura oculta.pdf')
+            ->assertDontSee(__('Documentos'));
+    }
+
+    public function test_un_agente_ve_los_documentos_del_envio(): void
+    {
+        $agente = User::factory()->create()->assignRole('agente');
+        $shipment = Shipment::factory()->create();
+
+        Http::fake([
+            $this->apiUrl('documents').'*' => Http::response([
+                'data' => [
+                    ['id' => 9, 'document_name' => 'Factura comercial.pdf', 'status' => 'aprobado'],
+                ],
+            ]),
+        ]);
+
+        Livewire::actingAs($agente)
+            ->test('shipment-card', ['shipment' => $this->payload($shipment)])
+            ->assertSee(__('Documentos'))
+            ->assertSee('Factura comercial.pdf');
+
+        // No se comprueba con `$request->data()`: para una petición GET, ese
+        // helper solo lee la query string cuando el verbo llega en mayúsculas
+        // ('GET'), y `callApi()` aquí lo manda en minúsculas —cuestión de cómo
+        // Laravel arma esa introspección para tests, no de cómo la API real
+        // lee el query string, que le llega igual—. Se comprueba en la URL en
+        // su lugar, que es justo lo que sale por cable.
+        Http::assertSent(fn ($request) => $request->method() === 'GET'
+            && str_contains($request->url(), '/api/documents')
+            && str_contains($request->url(), 'shipment_id='.$shipment->id));
+    }
+
+    public function test_un_agente_sin_documentos_no_ve_la_seccion(): void
+    {
+        $agente = User::factory()->create()->assignRole('agente');
+        $shipment = Shipment::factory()->create();
+
+        Http::fake([
+            $this->apiUrl('documents').'*' => Http::response(['data' => []]),
+        ]);
+
+        Livewire::actingAs($agente)
+            ->test('shipment-card', ['shipment' => $this->payload($shipment)])
+            ->assertDontSee(__('Documentos'));
     }
 
     /**

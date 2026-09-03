@@ -390,7 +390,7 @@ class extends BackofficeComponent
         @endif
     </x-backoffice.busy>
 
-    {{-- Las dos listas van fuera del bloque de arriba y cada una en su propio
+    {{-- Las listas van fuera del bloque de arriba y cada una en su propio
          componente: así editar un evento o quitar un vínculo repinta solo esa
          columna, y no el formulario del pedido, que puede tener cambios a medio
          teclear. --}}
@@ -404,6 +404,14 @@ class extends BackofficeComponent
             <livewire:backoffice.shipment-user-list
                 :tracking-number="$editing"
                 :key="'vinculados-'.$editing"
+            />
+
+            {{-- Dentro de la misma rejilla que las otras dos, no a ancho
+                 completo: una fila de documentos con nombre, estado y
+                 descarga no necesita todo el ancho de la pantalla. --}}
+            <livewire:backoffice.shipment-document-list
+                :shipment-id="$shipment['id'] ?? null"
+                :key="'documentos-'.($shipment['id'] ?? 0)"
             />
         </div>
     @endif

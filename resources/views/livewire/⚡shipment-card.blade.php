@@ -5,6 +5,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -30,6 +31,9 @@ new class extends Component
 
     public bool $linked = false;
 
+    /** @var list<array<string, mixed>> */
+    public array $documents = [];
+
     public ?string $errorMessage = null;
 
     /**
@@ -41,6 +45,7 @@ new class extends Component
     public function mount(?bool $linked = null): void
     {
         $this->linked = $linked ?? $this->isLinked();
+        $this->documents = $this->loadDocuments();
     }
 
     /**
@@ -164,6 +169,84 @@ new class extends Component
             ->where('tracking_number', $trackingNumber)
             ->exists();
     }
+
+    /**
+     * ¿Quien mira puede ver los documentos del envío?
+     *
+     * Los tres roles del backoffice, igual que el permiso "ver documento" del
+     * seeder (ver el comentario en RolesAndPermissionsSeeder): un cliente sin
+     * rol no los ve nunca, se pinte esta tarjeta donde se pinte. Se comprueba
+     * por rol y no con `can('ver documento')` porque esta tarjeta también la
+     * monta ⚡searchfield para un invitado, y ahí no hay sesión sobre la que
+     * evaluar el permiso.
+     */
+    private function canViewDocuments(): bool
+    {
+        return auth()->user()?->hasAnyRole(['agente', 'administrador', 'superadministrador']) ?? false;
+    }
+
+    /**
+     * Documentos del envío, solo para quien tiene rol para verlos.
+     *
+     * Esta tarjeta la pinta tanto el buscador público como "Mis pedidos", así
+     * que se comprueba el rol antes de llamar —igual que `loadCompanies()` en
+     * el backoffice—: los documentos no son públicos como el seguimiento, y
+     * sin `id` —la rama pública de `shipments.show` no lo trae— tampoco hay
+     * por qué preguntarlos.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function loadDocuments(): array
+    {
+        $shipmentId = $this->shipment['id'] ?? null;
+
+        if ($shipmentId === null || ! $this->canViewDocuments()) {
+            return [];
+        }
+
+        $response = $this->callApi('get', route('documents.index', [
+            'shipment_id' => (int) $shipmentId,
+        ], absolute: false));
+
+        if ($response === null || $response->failed()) {
+            return [];
+        }
+
+        $rows = $response->json('data');
+
+        return is_array($rows) ? array_values(array_filter($rows, is_array(...))) : [];
+    }
+
+    /**
+     * Tono del distintivo de estado de un documento.
+     *
+     * Mismo criterio que ⚡documents.blade.php: el estado es texto libre en la
+     * API —no hay enum detrás, a diferencia del de los envíos—, así que se
+     * reconocen las raíces habituales en castellano y todo lo demás se queda
+     * en gris.
+     */
+    public function statusTone(?string $status): string
+    {
+        $normalized = Str::lower(Str::ascii(trim((string) $status)));
+
+        return match (true) {
+            Str::contains($normalized, ['aprobad', 'validad', 'aceptad', 'verificad', 'conform']) => 'ok',
+            Str::contains($normalized, ['rechazad', 'denegad', 'caducad', 'error', 'incidencia', 'invalid']) => 'alerta',
+            Str::contains($normalized, ['pendiente', 'revis', 'proces', 'tramit', 'espera']) => 'azul',
+            default => 'gris',
+        };
+    }
+
+    /**
+     * Estado del documento tal y como se pinta: con la inicial en mayúscula, y
+     * con un texto propio cuando viene vacío en vez de un distintivo mudo.
+     */
+    public function statusLabel(?string $status): string
+    {
+        $status = trim((string) $status);
+
+        return $status === '' ? __('Sin estado') : Str::ucfirst($status);
+    }
 };
 ?>
 
@@ -242,5 +325,48 @@ new class extends Component
         <flux:separator class="mt-6" />
 
         <x-shipment-timeline :histories="$shipment['histories']" class="mt-6" />
+    @endif
+
+    {{-- `$documents` ya sale vacío si quien mira no tiene permiso para verlos
+         —lo resuelve `loadDocuments()`—, así que aquí solo queda pintar lo que
+         haya, igual que con el histórico. --}}
+    @if ($documents)
+        <flux:separator class="mt-6" />
+
+        <div class="mt-6 space-y-3">
+            <flux:text class="text-gris-600 dark:text-azul-100">{{ __('Documentos') }}</flux:text>
+
+            <ul class="space-y-2">
+                @foreach ($documents as $document)
+                    <li class="flex items-center justify-between gap-3 rounded-xl border border-gris-200 px-3 py-2 dark:border-azul-800">
+                        <div class="flex min-w-0 items-center gap-2">
+                            <flux:icon name="paper-clip" variant="outline" class="size-4 shrink-0 text-gris-400 dark:text-azul-200" />
+
+                            <div class="min-w-0">
+                                <span class="block truncate font-semibold text-gris-900 dark:text-blanco">
+                                    {{ $document['document_name'] ?? '—' }}
+                                </span>
+
+                                <x-backoffice.tone-badge :tone="$this->statusTone($document['status'] ?? null)" class="mt-0.5">
+                                    {{ $this->statusLabel($document['status'] ?? null) }}
+                                </x-backoffice.tone-badge>
+                            </div>
+                        </div>
+
+                        {{-- Relativa y armada aquí, no con el `download_url` que
+                             devuelve la API: esa URL sale con el host de dentro
+                             del contenedor (ver la nota en ⚡documents.blade.php). --}}
+                        <flux:button
+                            size="sm"
+                            variant="ghost"
+                            icon="arrow-down-tray"
+                            class="shrink-0"
+                            :label="__('Descargar documento')"
+                            :href="route('documents.download', ['document' => $document['id']], absolute: false)"
+                        />
+                    </li>
+                @endforeach
+            </ul>
+        </div>
     @endif
 </div>

@@ -12,8 +12,8 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Las dos columnas de la pantalla de detalle: el historial del pedido y las
- * cuentas que lo siguen.
+ * Las listas de la pantalla de detalle: el historial del pedido, las cuentas
+ * que lo siguen y sus documentos adjuntos.
  *
  * Son componentes propios justo para poder refrescarse solos, así que se
  * prueban solos: cada uno con su API fingida, sin montar la pantalla entera.
@@ -263,5 +263,67 @@ class ShipmentDetailListsTest extends TestCase
             ->assertOk()
             ->assertSet('users', [])
             ->assertSee('No pudimos cargar los usuarios vinculados.');
+    }
+
+    // --- Documentos ----------------------------------------------------------
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function documentos(): array
+    {
+        return [
+            [
+                'id' => 11,
+                'shipment_id' => 1,
+                'document_name' => 'factura-comercial.pdf',
+                'status' => 'aprobado',
+            ],
+            [
+                'id' => 12,
+                'shipment_id' => 1,
+                'document_name' => 'despacho-aduana.pdf',
+                'status' => 'pendiente de revisión',
+            ],
+        ];
+    }
+
+    public function test_los_documentos_piden_solo_los_de_ese_pedido(): void
+    {
+        Http::fake(['*' => Http::response($this->paginado($this->documentos()))]);
+
+        Livewire::actingAs($this->empleado())
+            ->test('backoffice.shipment-document-list', ['shipmentId' => 1])
+            ->assertOk()
+            ->assertSee('factura-comercial.pdf')
+            ->assertSee('despacho-aduana.pdf');
+
+        Http::assertSent(fn (Request $request) => $request->method() === 'GET'
+            && str_contains($request->url(), '/api/documents')
+            && $request->data()['shipment_id'] === 1);
+    }
+
+    public function test_sin_pedido_los_documentos_no_llaman_a_la_api(): void
+    {
+        Http::fake();
+
+        Livewire::actingAs($this->empleado())
+            ->test('backoffice.shipment-document-list')
+            ->assertOk()
+            ->assertSet('documents', [])
+            ->assertSee('Sin documentos');
+
+        Http::assertNothingSent();
+    }
+
+    public function test_un_fallo_de_la_api_deja_los_documentos_con_su_mensaje(): void
+    {
+        Http::fake(['*' => Http::response(['message' => 'Boom'], 500)]);
+
+        Livewire::actingAs($this->empleado())
+            ->test('backoffice.shipment-document-list', ['shipmentId' => 1])
+            ->assertOk()
+            ->assertSet('documents', [])
+            ->assertSee('No pudimos cargar los documentos de este pedido.');
     }
 }
