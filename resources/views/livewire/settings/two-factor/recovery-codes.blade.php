@@ -6,10 +6,10 @@
     <div class="px-6 space-y-2">
         <div class="flex items-center gap-2">
             <flux:icon.lock-closed variant="outline" class="size-4"/>
-            <flux:heading size="lg" level="3">{{ __('2FA recovery codes') }}</flux:heading>
+            <flux:heading size="lg" level="3">{{ __('Códigos de recuperación 2FA') }}</flux:heading>
         </div>
         <flux:text variant="subtle">
-            {{ __('Recovery codes let you regain access if you lose your 2FA device. Store them in a secure password manager.') }}
+            {{ __('Los códigos de recuperación te permiten recuperar el acceso si pierdes tu dispositivo 2FA. Guárdalos en un gestor de contraseñas seguro.') }}
         </flux:text>
     </div>
 
@@ -24,7 +24,7 @@
                 aria-expanded="false"
                 aria-controls="recovery-codes-section"
             >
-                {{ __('View recovery codes') }}
+                {{ __('Ver códigos de recuperación') }}
             </flux:button>
 
             <flux:button
@@ -36,7 +36,7 @@
                 aria-expanded="true"
                 aria-controls="recovery-codes-section"
             >
-                {{ __('Hide recovery codes') }}
+                {{ __('Ocultar códigos de recuperación') }}
             </flux:button>
 
             @if (filled($recoveryCodes))
@@ -46,7 +46,7 @@
                     variant="filled"
                     wire:click="regenerateRecoveryCodes"
                 >
-                    {{ __('Regenerate codes') }}
+                    {{ __('Regenerar códigos') }}
                 </flux:button>
             @endif
         </div>
@@ -67,7 +67,7 @@
                     <div
                         class="grid gap-1 p-4 font-mono text-sm rounded-lg bg-zinc-100 dark:bg-white/5"
                         role="list"
-                        aria-label="{{ __('Recovery codes') }}"
+                        aria-label="{{ __('Códigos de recuperación') }}"
                     >
                         @foreach($recoveryCodes as $code)
                             <div
@@ -80,7 +80,7 @@
                         @endforeach
                     </div>
                     <flux:text variant="subtle" class="text-xs">
-                        {{ __('Each recovery code can be used once to access your account and will be removed after use. If you need more, click Regenerate codes above.') }}
+                        {{ __('Cada código de recuperación se puede usar una sola vez para acceder a tu cuenta y se elimina tras usarlo. Si necesitas más, pulsa Regenerar códigos arriba.') }}
                     </flux:text>
                 @endif
             </div>

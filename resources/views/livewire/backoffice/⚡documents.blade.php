@@ -355,10 +355,10 @@ class extends BackofficeComponent
             <div class="space-y-4">
                 <flux:table>
                     <flux:table.columns>
-                        <flux:table.column>{{ __('Documento') }}</flux:table.column>
-                        <flux:table.column class="max-sm:hidden">{{ __('Guía') }}</flux:table.column>
-                        <flux:table.column class="max-md:hidden">{{ __('Estado') }}</flux:table.column>
-                        <flux:table.column class="text-end">{{ __('Acciones') }}</flux:table.column>
+                        <flux:table.column align="center">{{ __('Documento') }}</flux:table.column>
+                        <flux:table.column align="center" class="max-sm:hidden">{{ __('Guía') }}</flux:table.column>
+                        <flux:table.column align="center" class="max-md:hidden">{{ __('Estado') }}</flux:table.column>
+                        <flux:table.column align="center">{{ __('Acciones') }}</flux:table.column>
                     </flux:table.columns>
 
                     <flux:table.rows>
@@ -397,14 +397,14 @@ class extends BackofficeComponent
                                     {{ $document['shipment']['tracking_number'] ?? '—' }}
                                 </flux:table.cell>
 
-                                <flux:table.cell class="max-md:hidden">
+                                <flux:table.cell align="center" class="max-md:hidden">
                                     <x-backoffice.tone-badge :tone="$this->statusTone($document['status'] ?? null)">
                                         {{ $this->statusLabel($document['status'] ?? null) }}
                                     </x-backoffice.tone-badge>
                                 </flux:table.cell>
 
-                                <flux:table.cell class="text-end">
-                                    <div class="flex justify-end gap-1">
+                                <flux:table.cell align="center">
+                                    <div class="flex justify-center gap-1">
                                         {{-- Descarga directa del navegador: la petición
                                              lleva la cookie de sesión, y `statefulApi()`
                                              hace que el guard sanctum la reconozca.
@@ -468,7 +468,7 @@ class extends BackofficeComponent
 
                 <flux:field>
                     <flux:label>{{ __('Nombre del documento') }}</flux:label>
-                    <flux:input wire:model="document_name" placeholder="factura-comercial.pdf" />
+                    <flux:input wire:model="document_name" placeholder="factura comercial" />
                     <flux:error name="document_name" />
                 </flux:field>
 

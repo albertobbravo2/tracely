@@ -252,11 +252,11 @@ class extends BackofficeComponent
             <div class="space-y-4">
                 <flux:table>
                     <flux:table.columns>
-                        <flux:table.column>{{ __('Empresa') }}</flux:table.column>
-                        <flux:table.column class="max-md:hidden">{{ __('Contacto') }}</flux:table.column>
-                        <flux:table.column class="max-sm:hidden">{{ __('Teléfono') }}</flux:table.column>
-                        <flux:table.column class="max-sm:hidden">{{ __('Estado') }}</flux:table.column>
-                        <flux:table.column class="text-end">{{ __('Acciones') }}</flux:table.column>
+                        <flux:table.column align="center">{{ __('Empresa') }}</flux:table.column>
+                        <flux:table.column align="center" class="max-md:hidden">{{ __('Contacto') }}</flux:table.column>
+                        <flux:table.column align="center" class="max-sm:hidden">{{ __('Teléfono') }}</flux:table.column>
+                        <flux:table.column align="center" class="max-sm:hidden">{{ __('Estado') }}</flux:table.column>
+                        <flux:table.column align="center">{{ __('Acciones') }}</flux:table.column>
                     </flux:table.columns>
 
                     <flux:table.rows>
@@ -288,14 +288,14 @@ class extends BackofficeComponent
                                     {{ $company['phone'] ?: '—' }}
                                 </flux:table.cell>
 
-                                <flux:table.cell class="max-sm:hidden">
+                                <flux:table.cell align="center" class="max-sm:hidden">
                                     <x-backoffice.tone-badge :tone="$activa ? 'ok' : 'gris'">
                                         {{ $activa ? __('Activa') : __('Inactiva') }}
                                     </x-backoffice.tone-badge>
                                 </flux:table.cell>
 
-                                <flux:table.cell class="text-end">
-                                    <div class="flex justify-end gap-1">
+                                <flux:table.cell align="center">
+                                    <div class="flex justify-center gap-1">
                                         <flux:button
                                             size="sm"
                                             variant="ghost"

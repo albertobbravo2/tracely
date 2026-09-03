@@ -299,12 +299,12 @@ class extends BackofficeComponent
             <div class="space-y-4">
                 <flux:table>
                     <flux:table.columns>
-                        <flux:table.column>{{ __('Guía') }}</flux:table.column>
-                        <flux:table.column class="max-sm:hidden">{{ __('Estado') }}</flux:table.column>
-                        <flux:table.column class="max-md:hidden">{{ __('Ubicación') }}</flux:table.column>
-                        <flux:table.column class="max-xl:hidden">{{ __('Descripción') }}</flux:table.column>
-                        <flux:table.column class="max-sm:hidden">{{ __('Ocurrió') }}</flux:table.column>
-                        <flux:table.column class="text-end">{{ __('Acciones') }}</flux:table.column>
+                        <flux:table.column align="center">{{ __('Guía') }}</flux:table.column>
+                        <flux:table.column align="center" class="max-sm:hidden">{{ __('Estado') }}</flux:table.column>
+                        <flux:table.column align="center" class="max-md:hidden">{{ __('Ubicación') }}</flux:table.column>
+                        <flux:table.column align="center" class="max-xl:hidden">{{ __('Descripción') }}</flux:table.column>
+                        <flux:table.column align="center" class="max-sm:hidden">{{ __('Ocurrió') }}</flux:table.column>
+                        <flux:table.column align="center">{{ __('Acciones') }}</flux:table.column>
                     </flux:table.columns>
 
                     <flux:table.rows>
@@ -326,7 +326,7 @@ class extends BackofficeComponent
                                     </span>
                                 </flux:table.cell>
 
-                                <flux:table.cell class="max-sm:hidden">
+                                <flux:table.cell align="center" class="max-sm:hidden">
                                     <x-backoffice.status-badge :status="$history['status'] ?? null" />
                                 </flux:table.cell>
 
@@ -345,8 +345,8 @@ class extends BackofficeComponent
                                     {{ $this->eventDate($history['recorded_at'] ?? null) }}
                                 </flux:table.cell>
 
-                                <flux:table.cell class="text-end">
-                                    <div class="flex justify-end gap-1">
+                                <flux:table.cell align="center">
+                                    <div class="flex justify-center gap-1">
                                         <flux:button
                                             size="sm"
                                             variant="ghost"

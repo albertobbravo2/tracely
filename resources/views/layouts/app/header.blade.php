@@ -13,8 +13,8 @@
 
                 <flux:navbar class="me-1.5 space-x-0.5 rtl:space-x-reverse py-0!">
                     {{--     BUSCAR ( de momento no necesario en header)
-                    <flux:tooltip :content="__('Search')" position="bottom">
-                        <flux:navbar.item class="!h-10 [&>div>svg]:size-5" icon="magnifying-glass" href="#" :label="__('Search')" />
+                    <flux:tooltip :content="__('Buscar')" position="bottom">
+                        <flux:navbar.item class="!h-10 [&>div>svg]:size-5" icon="magnifying-glass" href="#" :label="__('Buscar')" />
                         </flux:tooltip>
                         --}}
 
@@ -25,7 +25,7 @@
                     class="h-10 max-lg:hidden [&>div>svg]:size-5"
                     :href="route('dashboard')"
                     :current="request()->routeIs('dashboard')" wire:navigate>
-                    {{ __('Dashboard') }}
+                    {{ __('Panel') }}
                 </flux:navbar.item>
 
                 {{-- Los mismos roles que protegen el bloque `backoffice.` en routes/web.php. --}}
@@ -50,10 +50,10 @@
             @else
                 <flux:navbar class="space-x-0.5">
                     <flux:navbar.item :href="route('login')" wire:navigate>
-                        {{ __('Log in') }}
+                        {{ __('Iniciar sesión') }}
                     </flux:navbar.item>
                     <flux:navbar.item :href="route('register')" wire:navigate>
-                        {{ __('Register') }}
+                        {{ __('Registrarse') }}
                     </flux:navbar.item>
                 </flux:navbar>
             @endauth
@@ -68,9 +68,9 @@
 
             @auth
                 <flux:sidebar.nav>
-                    <flux:sidebar.group :heading="__('Platform')">
+                    <flux:sidebar.group :heading="__('Plataforma')">
                         <flux:sidebar.item icon="layout-grid" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
-                            {{ __('Dashboard')  }}
+                            {{ __('Panel')  }}
                         </flux:sidebar.item>
                     </flux:sidebar.group>
                 </flux:sidebar.nav>
