@@ -31,6 +31,8 @@ class extends BackofficeComponent
 
     public ?int $company_id = null;
 
+    public string $role = '';
+
     public ?int $deleting = null;
 
     /** @var list<array<string, mixed>> */
@@ -97,6 +99,7 @@ class extends BackofficeComponent
         $this->name = $user['name'] ?? '';
         $this->email = $user['email'] ?? '';
         $this->company_id = $user['company_id'] ?? null;
+        $this->role = collect($user['roles'] ?? [])->pluck('name')->first() ?? '';
 
         $this->loadCompanies();
 
@@ -114,6 +117,10 @@ class extends BackofficeComponent
             // `company_id` viaja siempre, también vacío: es `nullable` en la
             // API, así que mandarlo a null es como se desvincula de la empresa.
             'company_id' => $this->company_id ?: null,
+            // Igual que la empresa: mandarlo vacío es cómo se deja la cuenta
+            // sin rol (cliente final). La API decide si el rol pedido está a
+            // la altura de quien hace la petición.
+            'role' => $this->role !== '' ? $this->role : null,
         ];
 
         // En la edición la contraseña solo se manda si se ha tecleado una nueva:
@@ -141,7 +148,7 @@ class extends BackofficeComponent
 
         Flux::modal('user-form')->close();
         Flux::toast(variant: 'success', text: $this->editing === null
-            ? __('Usuario creado. Su rol se asigna fuera del backoffice.')
+            ? __('Usuario creado.')
             : __('Usuario actualizado.'));
 
         $this->resetForm();
@@ -197,6 +204,38 @@ class extends BackofficeComponent
     }
 
     /**
+     * Roles que quien mira puede asignar a otra cuenta: los suyos y los que
+     * estén por debajo en la jerarquía agente < administrador <
+     * superadministrador. Solo decide qué opciones se pintan — el filtro
+     * real, el que importa, lo aplica `UserController`.
+     *
+     * @return list<string>
+     */
+    public function assignableRoles(): array
+    {
+        $hierarchy = ['agente', 'administrador', 'superadministrador'];
+        $user = auth()->user();
+
+        $level = 0;
+
+        foreach ($hierarchy as $index => $role) {
+            if ($user?->hasRole($role)) {
+                $level = $index + 1;
+            }
+        }
+
+        return array_slice($hierarchy, 0, $level);
+    }
+
+    /**
+     * Etiqueta legible de un rol para las opciones del desplegable.
+     */
+    public function roleOptionLabel(string $role): string
+    {
+        return Str::ucfirst($role);
+    }
+
+    /**
      * Igual que en la pantalla de pedidos: se recorren todas las páginas dentro
      * de una sola llamada, y se comprueba el rol antes de llamar — sin esto,
      * cada vez que un agente abría el formulario se llevaba un 403 de
@@ -240,6 +279,7 @@ class extends BackofficeComponent
         $this->email = '';
         $this->password = '';
         $this->company_id = null;
+        $this->role = '';
     }
 
     /**
@@ -270,7 +310,7 @@ class extends BackofficeComponent
 
         // Los clientes finales no tienen rol: no es un dato que falte, es lo
         // que los distingue de una cuenta de empleado.
-        return $roles === [] ? __('Cliente (sin rol)') : implode(', ', $roles);
+        return $roles === [] ? __('Cliente') : implode(', ', $roles);
     }
 
     /**
@@ -287,7 +327,7 @@ class extends BackofficeComponent
 <div class="space-y-6">
     <x-backoffice.heading
         :heading="__('Usuarios')"
-        :subheading="__('Cuentas de empleados y clientes. El rol se muestra pero se asigna fuera del backoffice.')"
+        :subheading="__('Cuentas de empleados y clientes.')"
     >
         <x-slot:actions>
             <flux:button variant="primary" icon="plus" wire:click="create">
@@ -325,10 +365,10 @@ class extends BackofficeComponent
             <div class="space-y-4">
                 <flux:table>
                     <flux:table.columns>
-                        <flux:table.column>{{ __('Nombre') }}</flux:table.column>
-                        <flux:table.column class="max-sm:hidden">{{ __('Email') }}</flux:table.column>
-                        <flux:table.column class="max-md:hidden">{{ __('Rol') }}</flux:table.column>
-                        <flux:table.column class="text-end">{{ __('Acciones') }}</flux:table.column>
+                        <flux:table.column align="center">{{ __('Nombre') }}</flux:table.column>
+                        <flux:table.column align="center" class="max-sm:hidden">{{ __('Email') }}</flux:table.column>
+                        <flux:table.column align="center" class="max-md:hidden">{{ __('Rol') }}</flux:table.column>
+                        <flux:table.column align="center">{{ __('Acciones') }}</flux:table.column>
                     </flux:table.columns>
 
                     <flux:table.rows>
@@ -365,11 +405,11 @@ class extends BackofficeComponent
 
                                 <flux:table.cell class="max-sm:hidden">{{ $user['email'] }}</flux:table.cell>
 
-                                <flux:table.cell class="max-md:hidden">
+                                <flux:table.cell align="center" class="max-md:hidden">
                                     @if ($roles === [])
-                                        <x-backoffice.tone-badge tone="gris">{{ __('Cliente (sin rol)') }}</x-backoffice.tone-badge>
+                                        <x-backoffice.tone-badge tone="gris">{{ __('Cliente') }}</x-backoffice.tone-badge>
                                     @else
-                                        <div class="flex flex-wrap gap-1">
+                                        <div class="flex flex-wrap justify-center gap-1">
                                             @foreach ($roles as $role)
                                                 <x-backoffice.tone-badge tone="azul">{{ $role }}</x-backoffice.tone-badge>
                                             @endforeach
@@ -377,8 +417,8 @@ class extends BackofficeComponent
                                     @endif
                                 </flux:table.cell>
 
-                                <flux:table.cell class="text-end">
-                                    <div class="flex justify-end gap-1">
+                                <flux:table.cell align="center">
+                                    <div class="flex justify-center gap-1">
                                         <flux:button
                                             size="sm"
                                             variant="ghost"
@@ -432,9 +472,34 @@ class extends BackofficeComponent
                     </flux:label>
                     <flux:input type="password" wire:model="password" autocomplete="new-password" viewable />
                     @if ($editing !== null)
-                        <flux:description>{{ __('Déjalo vacío para no cambiarla.') }}</flux:description>
+                        {{-- `x-show` con `$wire.password` (no un `x-data` propio) a
+                             propósito: el valor tecleado ya vive reactivo en el cliente
+                             vía `wire:model` —sin `.live`, sin pedir nada al servidor
+                             por cada tecla— y así no hay estado de Alpine duplicado
+                             que se quede obsoleto si se reabre el modal en otra fila. --}}
+                        <flux:callout
+                            x-show="$wire.password.trim() !== ''"
+                            variant="warning"
+                            icon="exclamation-triangle"
+                            heading="{{ __('Al guardar, se cambiará la contraseña de este usuario.') }}"
+                        />
+                        <flux:description x-show="$wire.password.trim() === ''">
+                            {{ __('Déjalo vacío para no cambiarla.') }}
+                        </flux:description>
                     @endif
                     <flux:error name="password" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label badge="{{ __('Opcional') }}">{{ __('Rol') }}</flux:label>
+                    <flux:select wire:model="role">
+                        <flux:select.option value="">{{ __('Cliente') }}</flux:select.option>
+                        @foreach ($this->assignableRoles() as $roleOption)
+                            <flux:select.option :value="$roleOption">{{ $this->roleOptionLabel($roleOption) }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+                    <flux:description>{{ __('Solo puedes asignar tu rol o uno por debajo.') }}</flux:description>
+                    <flux:error name="role" />
                 </flux:field>
 
                 @if ($companies)
