@@ -20,10 +20,18 @@ and structure follow standard English Laravel conventions.
   intencional es la consulta pública de seguimiento (rama sin autenticar de `shipments.show`,
   ver "Auth & authorization"). Al añadir un endpoint nuevo, asume que es para backoffice
   (gated por `permission:`) salvo que se indique lo contrario.
+- **Lee [design.md](design.md) antes de tocar la UI**: es obligatorio antes de modificar
+  cualquier vista Blade/Livewire, clase de Tailwind o `resources/css/app.css`. Define la
+  paleta semántica, la tipografía, el mapeo de `ShipmentStatus` a color y los patrones de
+  navbar, sidebar, tabla, formulario y modal. El diseño de referencia del que sale vive en
+  [UI.pen](UI.pen), sección «★ Tracely — Diseño final». Si lo que vas a hacer contradice
+  `design.md`, dilo antes de escribir código.
 - **Sin estilos inline por defecto**: al maquetar o ajustar diseño, reutiliza los componentes
-  Flux y los tokens ya definidos en `resources/css/app.css` (paleta `zinc`/`azul`/`ok`/`alerta`/
-  `gris`, `accent`) en vez de añadir `style="..."` o clases/colores arbitrarios nuevos. Solo te
-  apartas de esto si el usuario lo pide explícitamente.
+  Flux y los tokens del tema definidos en `resources/css/app.css` en vez de añadir
+  `style="..."` o clases/colores arbitrarios nuevos. Los tokens vigentes son los de
+  `design.md`; la paleta antigua (`azul`/`ok`/`alerta`/`gris`, `brand-navy`) está en proceso
+  de sustitución y no debe usarse en pantallas ya migradas. Solo te apartas de esto si el
+  usuario lo pide explícitamente.
 - **No toques la estructura de los datos sin que se pida**: no cambies migraciones, relaciones
   Eloquent, `casts`, los atributos `#[Fillable]`/`#[Hidden]`/`#[Appends]`, ni el enum
   `ShipmentStatus`, como efecto colateral de otra tarea. Si lo que se pide parece requerir un
@@ -176,12 +184,18 @@ Project-specific conventions for these are written up in `.claude/skills/`
 Claude Code loads these automatically when relevant; if you're a different agent, read them
 directly — they're plain Markdown, not Claude-specific.
 
-One thing worth knowing that isn't spelled out in those skill docs: beyond the `zinc` neutral
-scale, `app.css` also defines a separate custom brand palette (`azul-*`, `ok*`, `alerta*`,
-`gris-*`, `blanco`, `brand-navy`) that the actual product UI (e.g. the searchfield result card)
-uses for shipment-status semantics — `ok` for entregado, `alerta` for incidencia, `azul` for
-en_transito/en_aduana, `gris` for pendiente/default/unrecognized. Match whichever palette the
-surrounding view already uses.
+Those skill docs cover *syntax*; the *visual direction* — palette, typography, status colors
+and component patterns — lives in [design.md](design.md), which is required reading before
+any UI change.
+
+One thing worth knowing that isn't spelled out in either: beyond the `zinc` neutral scale,
+`app.css` still defines the older custom brand palette (`azul-*`, `ok*`, `alerta*`, `gris-*`,
+`blanco`, `brand-navy`) that parts of the product UI (e.g. the searchfield result card) use
+for shipment-status semantics — `ok` for entregado, `alerta` for incidencia, `azul` for
+en_transito/en_aduana, `gris` for pendiente/default/unrecognized. That palette is being
+replaced by the semantic tokens in `design.md` (which splits en_transito and en_aduana into
+distinct colors). In a view that hasn't been migrated yet, match the surrounding palette
+rather than mixing the two mid-file.
 
 There's no `resources/lang` directory — `__()` wraps hardcoded Spanish strings for
 future-proofing; it isn't backed by an active translation table today.

@@ -91,7 +91,7 @@ class BackofficeAccessTest extends TestCase
         $this->actingAs($superadmin)
             ->get(route('backoffice.shipments'))
             ->assertOk()
-            ->assertSee('Historial de pedidos')
+            ->assertSee('Historial')
             ->assertSee('Compañías')
             ->assertSee('Documentos');
     }
@@ -115,7 +115,7 @@ class BackofficeAccessTest extends TestCase
         $this->actingAs($empleado)
             ->get(route('backoffice.shipments'))
             ->assertOk()
-            ->assertSee('Historial de pedidos')
+            ->assertSee('Historial')
             ->assertSee('Documentos')
             ->assertDontSee('Compañías');
     }

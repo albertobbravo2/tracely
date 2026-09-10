@@ -236,9 +236,9 @@ new class extends BackofficeComponent
 };
 ?>
 
-<div class="space-y-4 rounded-2xl border border-gris-200 bg-blanco p-6 shadow-sm dark:border-azul-800 dark:bg-azul-900">
-    <flux:heading size="lg" class="text-gris-900 dark:text-blanco">
-        {{ __('Historial de pedidos') }}
+<div class="space-y-5 rounded-xl border border-line bg-surface p-6">
+    <flux:heading size="lg" class="text-ink">
+        {{ __('Historial del pedido') }}
     </flux:heading>
 
     @if ($errorMessage)
@@ -255,32 +255,67 @@ new class extends BackofficeComponent
                 />
             @endif
         @else
-            <ul class="divide-y divide-gris-200 dark:divide-azul-800">
+            {{-- Línea de tiempo, no lista con separadores: es el patrón que pide
+                 design.md para el historial del detalle. Mismo lenguaje visual
+                 que <x-shipment-timeline>, la que ve el cliente, con el botón
+                 de editar añadido a la derecha de cada evento. --}}
+            <ol>
                 @foreach ($histories as $history)
-                    <li class="flex items-start justify-between gap-3 py-3 first:pt-0">
-                        <div class="min-w-0">
-                            <x-backoffice.status-badge :status="$history['status'] ?? null" />
+                    @php
+                        // Mismo mapeo estado → token que <x-backoffice.status-badge>
+                        // (design.md → Estados de envío), aquí resuelto a icono:
+                        // el badge da la etiqueta y el color de fondo, y el icono
+                        // el color suelto que la línea de tiempo necesita.
+                        $case = \App\Enums\ShipmentStatus::tryFrom((string) ($history['status'] ?? ''));
 
-                            @if ($history['description'] ?? null)
-                                <p class="mt-1 text-gris-900 dark:text-blanco">{{ $history['description'] }}</p>
-                            @endif
+                        $marker = match ($case) {
+                            \App\Enums\ShipmentStatus::Entregado => ['icon' => 'check-circle', 'chip' => 'bg-ok-soft text-ok'],
+                            \App\Enums\ShipmentStatus::EnTransito => ['icon' => 'truck', 'chip' => 'bg-info-soft text-info'],
+                            \App\Enums\ShipmentStatus::EnAduana => ['icon' => 'building-office-2', 'chip' => 'bg-aduana-soft text-aduana'],
+                            \App\Enums\ShipmentStatus::Incidencia => ['icon' => 'exclamation-triangle', 'chip' => 'bg-danger-soft text-danger'],
+                            default => ['icon' => 'clock', 'chip' => 'bg-idle-soft text-idle'],
+                        };
+                    @endphp
 
-                            <flux:text size="sm" class="mt-0.5 text-gris-600 dark:text-azul-200">
-                                {{ collect([$history['location'] ?? null, $this->eventDate($history['recorded_at'] ?? null)])->filter()->join(' · ') }}
-                            </flux:text>
+                    <li class="relative flex gap-4 pb-6 last:pb-0">
+                        {{-- La línea cuelga del icono para quedar centrada bajo
+                             él, y no se pinta en el último evento. --}}
+                        @unless ($loop->last)
+                            <span aria-hidden="true" class="absolute top-9 bottom-0 left-4 w-px -translate-x-1/2 bg-line"></span>
+                        @endunless
+
+                        <span
+                            aria-hidden="true"
+                            @class(['flex size-8 shrink-0 items-center justify-center rounded-full', $marker['chip']])
+                        >
+                            <flux:icon :name="$marker['icon']" variant="micro" class="size-4" />
+                        </span>
+
+                        <div class="flex min-w-0 flex-1 items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <x-backoffice.status-badge :status="$history['status'] ?? null" />
+
+                                @if ($history['description'] ?? null)
+                                    <p class="mt-1 text-ink">{{ $history['description'] }}</p>
+                                @endif
+
+                                <flux:text size="sm" class="mt-0.5 text-ink-muted">
+                                    {{ collect([$history['location'] ?? null, $this->eventDate($history['recorded_at'] ?? null)])->filter()->join(' · ') }}
+                                </flux:text>
+                            </div>
+
+                            <flux:button
+                                size="sm"
+                                variant="ghost"
+                                icon="pencil-square"
+                                class="shrink-0"
+                                :label="__('Editar evento')"
+                                wire:click="edit({{ $history['id'] }})"
+                            />
                         </div>
-
-                        <flux:button
-                            size="sm"
-                            variant="ghost"
-                            icon="pencil-square"
-                            class="shrink-0"
-                            :label="__('Editar evento')"
-                            wire:click="edit({{ $history['id'] }})"
-                        />
                     </li>
                 @endforeach
-            </ul>
+            </ol>
 
             <x-backoffice.pagination :meta="$meta" />
         @endif
@@ -290,7 +325,7 @@ new class extends BackofficeComponent
         name="shipment-history-form"
         :heading="$editing === null ? __('Nuevo evento') : __('Editar evento')"
         :description="$editing === null
-            ? __('Se añade al historial de este pedido. El estado del pedido en sí se cambia arriba, en su formulario.')
+            ? __('Se añade al historial de este pedido. El estado del pedido en sí se cambia abajo, en su formulario.')
             : __('Corrige lo que se registró mal. El pedido al que pertenece no se puede cambiar.')"
         wire:close="$refresh"
     >

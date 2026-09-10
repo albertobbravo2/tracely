@@ -15,15 +15,21 @@
                 type="email"
                 required
                 autofocus
+                autocomplete="email"
                 placeholder="email@example.com"
             />
 
-            <flux:button variant="primary" type="submit" class="w-full" data-test="email-password-reset-link-button">
+            <flux:button
+                variant="primary"
+                type="submit"
+                class="w-full shadow-elev"
+                data-test="email-password-reset-link-button"
+            >
                 {{ __('Enviar enlace de restablecimiento') }}
             </flux:button>
         </form>
 
-        <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-400">
+        <div class="space-x-1 text-sm text-center rtl:space-x-reverse text-ink-2">
             <span>{{ __('O vuelve a') }}</span>
             <flux:link :href="route('login')" wire:navigate>{{ __('iniciar sesión') }}</flux:link>
         </div>

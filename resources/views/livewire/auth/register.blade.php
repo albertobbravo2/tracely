@@ -5,6 +5,10 @@
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
 
+        {{-- design.md → Autenticación: login y registro llevan el botón de
+             passkey encima del formulario, con el separador de correo. --}}
+        <x-passkey-verify />
+
         <form method="POST" action="{{ route('register.store') }}" class="flex flex-col gap-6">
             @csrf
             <!-- Name -->
@@ -22,15 +26,13 @@
             <!-- País -->
             <flux:select
                 name="country"
-                wire:model='country'
-                :placeholder="__('Nombre completo')"
+                wire:model="country"
                 :label="__('País')"
-                >
-
-                <flux:select.option> España </flux:select.option>
-                <flux:select.option> República Dominicana </flux:select.option>
+                :placeholder="__('Selecciona tu país')"
+            >
+                <flux:select.option>España</flux:select.option>
+                <flux:select.option>República Dominicana</flux:select.option>
             </flux:select>
-
 
             <!-- Email Address -->
             <flux:input
@@ -67,19 +69,17 @@
                 viewable
             />
 
-            <div class="flex items-center justify-end">
-                <flux:button
-                    type="submit"
-                    variant="primary"
-                    class="w-full [--color-accent-foreground:var(--color-white)] [--color-accent:var(--color-brand-navy)]"
-                    data-test="register-user-button"
-                >
-                    {{ __('Crear cuenta') }}
-                </flux:button>
-            </div>
+            <flux:button
+                type="submit"
+                variant="primary"
+                class="w-full shadow-elev"
+                data-test="register-user-button"
+            >
+                {{ __('Crear cuenta') }}
+            </flux:button>
         </form>
 
-        <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-gris-600 dark:text-azul-100">
+        <div class="space-x-1 text-sm text-center rtl:space-x-reverse text-ink-2">
             <span>{{ __('¿Ya tienes cuenta?') }}</span>
             <flux:link :href="route('login')" wire:navigate>{{ __('Iniciar sesión') }}</flux:link>
         </div>

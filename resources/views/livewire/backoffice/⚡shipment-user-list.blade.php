@@ -116,9 +116,9 @@ new class extends BackofficeComponent
 };
 ?>
 
-<div class="space-y-4 rounded-2xl border border-gris-200 bg-blanco p-6 shadow-sm dark:border-azul-800 dark:bg-azul-900">
-    <flux:heading size="lg" class="text-gris-900 dark:text-blanco">
-        {{ __('Usuarios vinculados') }}
+<div class="space-y-4 rounded-xl border border-line bg-surface p-6">
+    <flux:heading size="lg" class="text-ink">
+        {{ __('Clientes vinculados') }}
     </flux:heading>
 
     @if ($errorMessage)
@@ -135,14 +135,22 @@ new class extends BackofficeComponent
                 />
             @endif
         @else
-            <ul class="divide-y divide-gris-200 dark:divide-azul-800">
+            <ul class="divide-y divide-line">
                 @foreach ($users as $user)
                     <li class="flex items-center justify-between gap-3 py-3 first:pt-0">
-                        <div class="min-w-0">
-                            <p class="truncate font-semibold text-gris-900 dark:text-blanco">{{ $user['name'] ?? '—' }}</p>
-                            <flux:text size="sm" class="truncate text-gris-600 dark:text-azul-200">
-                                {{ $user['email'] ?? '—' }}
-                            </flux:text>
+                        <div class="flex min-w-0 items-center gap-3">
+                            {{-- Avatar en `surface-2`, como los del sidebar y la
+                                 barra superior (design.md → Color). --}}
+                            <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-2 text-sm font-semibold text-ink-2">
+                                {{ \Illuminate\Support\Str::of($user['name'] ?? '—')->trim()->substr(0, 1)->upper() }}
+                            </span>
+
+                            <div class="min-w-0">
+                                <p class="truncate font-semibold text-ink">{{ $user['name'] ?? '—' }}</p>
+                                <flux:text size="sm" class="truncate text-ink-muted">
+                                    {{ $user['email'] ?? '—' }}
+                                </flux:text>
+                            </div>
                         </div>
 
                         <flux:button

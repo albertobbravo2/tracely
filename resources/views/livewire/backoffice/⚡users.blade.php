@@ -111,6 +111,12 @@ class extends BackofficeComponent
         $this->resetErrorBag();
         $this->errorMessage = null;
 
+        if ($this->requiresCompany() && ! $this->company_id) {
+            $this->addError('company_id', __('Elige una empresa: un agente o un administrador trabajan siempre dentro de una.'));
+
+            return;
+        }
+
         $payload = [
             'name' => trim($this->name),
             'email' => trim($this->email),
@@ -201,6 +207,25 @@ class extends BackofficeComponent
     public function canChooseCompany(): bool
     {
         return auth()->user()?->hasRole('superadministrador') ?? false;
+    }
+
+    /**
+     * ¿El rol elegido obliga a asignar empresa?
+     *
+     * Un agente o un administrador trabajan siempre dentro de una empresa: es
+     * el `company_id` con el que los listados les recortan lo que pueden ver,
+     * así que sin empresa la cuenta no sirve de nada. Las dos excepciones son
+     * el superadministrador, que va por encima de las empresas, y el cliente
+     * final —rol vacío—, que se vincula a pedidos sueltos y no a una empresa.
+     *
+     * Solo aplica a quien puede elegirla: al resto la API le impone la suya
+     * (ver `UserController::store()`), así que no hay nada que exigirle.
+     */
+    public function requiresCompany(): bool
+    {
+        return $this->canChooseCompany()
+            && $this->role !== ''
+            && $this->role !== 'superadministrador';
     }
 
     /**
@@ -362,9 +387,13 @@ class extends BackofficeComponent
                 </x-backoffice.empty>
             @endif
         @else
-            <div class="space-y-4">
-                <flux:table>
-                    <flux:table.columns>
+            {{-- Tabla como tarjeta: `surface` con borde, cabecera sobre `surface-2`
+                 y filas separadas por 1 px de `line` (design.md → Tabla). Las
+                 celdas de los extremos recuperan el padding lateral que Flux les
+                 quita (`first:ps-0`), que aquí las pegaba al borde de la tarjeta. --}}
+            <div class="overflow-hidden rounded-xl border border-line bg-surface">
+                <flux:table class="[&_td:first-child]:ps-5 [&_td:last-child]:pe-5 [&_th:first-child]:ps-5 [&_th:last-child]:pe-5">
+                    <flux:table.columns class="bg-surface-2 [&_th]:text-xs [&_th]:font-semibold">
                         <flux:table.column align="center">{{ __('Nombre') }}</flux:table.column>
                         <flux:table.column align="center" class="max-sm:hidden">{{ __('Email') }}</flux:table.column>
                         <flux:table.column align="center" class="max-md:hidden">{{ __('Rol') }}</flux:table.column>
@@ -387,16 +416,16 @@ class extends BackofficeComponent
                                              o un email largo ensancha la celda y empuja
                                              las acciones fuera de la pantalla. --}}
                                         <div class="min-w-0">
-                                            <span class="block truncate font-semibold text-gris-900 dark:text-blanco">
+                                            <span class="block truncate font-semibold text-ink">
                                                 {{ $user['name'] }}
                                             </span>
 
                                             {{-- Email y rol se ocultan en pantallas
                                                  pequeñas: aquí van resumidos. --}}
-                                            <span class="block truncate text-sm text-gris-600 sm:hidden dark:text-azul-200">
+                                            <span class="block truncate text-sm text-ink-2 sm:hidden">
                                                 {{ $user['email'] }}
                                             </span>
-                                            <span class="block truncate text-sm text-gris-600 md:hidden dark:text-azul-200">
+                                            <span class="block truncate text-sm text-ink-2 md:hidden">
                                                 {{ $this->roleLabel($user) }}
                                             </span>
                                         </div>
@@ -407,11 +436,11 @@ class extends BackofficeComponent
 
                                 <flux:table.cell align="center" class="max-md:hidden">
                                     @if ($roles === [])
-                                        <x-backoffice.tone-badge tone="gris">{{ __('Cliente') }}</x-backoffice.tone-badge>
+                                        <x-backoffice.tone-badge tone="idle">{{ __('Cliente') }}</x-backoffice.tone-badge>
                                     @else
                                         <div class="flex flex-wrap justify-center gap-1">
                                             @foreach ($roles as $role)
-                                                <x-backoffice.tone-badge tone="azul">{{ $role }}</x-backoffice.tone-badge>
+                                                <x-backoffice.tone-badge tone="info">{{ $role }}</x-backoffice.tone-badge>
                                             @endforeach
                                         </div>
                                     @endif
@@ -440,7 +469,9 @@ class extends BackofficeComponent
                     </flux:table.rows>
                 </flux:table>
 
-                <x-backoffice.pagination :meta="$meta" />
+                <div class="px-5 pb-4">
+                    <x-backoffice.pagination :meta="$meta" />
+                </div>
             </div>
         @endif
     </x-backoffice.busy>
@@ -492,7 +523,10 @@ class extends BackofficeComponent
 
                 <flux:field>
                     <flux:label badge="{{ __('Opcional') }}">{{ __('Rol') }}</flux:label>
-                    <flux:select wire:model="role">
+                    {{-- `.live` porque el rol decide si la empresa es obligatoria:
+                         el distintivo de abajo tiene que cambiar al elegirlo, no
+                         al intentar guardar. --}}
+                    <flux:select wire:model.live="role">
                         <flux:select.option value="">{{ __('Cliente') }}</flux:select.option>
                         @foreach ($this->assignableRoles() as $roleOption)
                             <flux:select.option :value="$roleOption">{{ $this->roleOptionLabel($roleOption) }}</flux:select.option>
@@ -504,13 +538,26 @@ class extends BackofficeComponent
 
                 @if ($companies)
                     <flux:field>
-                        <flux:label badge="{{ __('Opcional') }}">{{ __('Empresa') }}</flux:label>
+                        <flux:label badge="{{ $this->requiresCompany() ? __('Requerido') : __('Opcional') }}">
+                            {{ __('Empresa') }}
+                        </flux:label>
                         <flux:select wire:model="company_id">
-                            <flux:select.option value="">{{ __('Sin empresa') }}</flux:select.option>
+                            {{-- La opción vacía se queda aunque la empresa sea
+                                 obligatoria: quitarla dejaría el desplegable
+                                 mostrando la primera empresa como si estuviera
+                                 elegida, cuando `company_id` sigue a null. --}}
+                            <flux:select.option value="">
+                                {{ $this->requiresCompany() ? __('Elige una empresa') : __('Sin empresa') }}
+                            </flux:select.option>
                             @foreach ($companies as $company)
                                 <flux:select.option :value="$company['id']">{{ $company['name'] }}</flux:select.option>
                             @endforeach
                         </flux:select>
+                        @if ($this->requiresCompany())
+                            <flux:description>
+                                {{ __('Los pedidos que verá esta cuenta son los de su empresa.') }}
+                            </flux:description>
+                        @endif
                         <flux:error name="company_id" />
                     </flux:field>
                 @endif

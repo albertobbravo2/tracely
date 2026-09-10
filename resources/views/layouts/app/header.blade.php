@@ -1,66 +1,76 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-gris-050 dark:bg-[#10262B]">
-        <flux:header container class="border-b border-azul-200 bg-azul-100 dark:border-azul-900 dark:bg-azul-800">
+    <body class="min-h-screen bg-canvas">
+        <flux:header container class="!h-auto border-b border-line bg-surface py-3.5">
             <flux:sidebar.toggle class="lg:hidden mr-2" icon="bars-2" inset="left" />
 
-            <x-app-logo href="{{ route('home') }}" wire:navigate />
+            <a href="{{ route('home') }}" class="flex items-center gap-2.5" wire:navigate>
+                <x-brand-mark class="!size-[30px]" />
+                <span class="text-[17px] font-bold tracking-[-0.02em] text-ink">Tracely</span>
+            </a>
 
-                <flux:spacer />
+            <flux:spacer />
 
-                <flux:navbar class="me-1.5 space-x-0.5 rtl:space-x-reverse py-0!">
-                    {{--     BUSCAR ( de momento no necesario en header)
-                    <flux:tooltip :content="__('Buscar')" position="bottom">
-                        <flux:navbar.item class="!h-10 [&>div>svg]:size-5" icon="magnifying-glass" href="#" :label="__('Buscar')" />
-                        </flux:tooltip>
-                        --}}
-
+            <div class="flex items-center gap-1.5">
                 @auth
+                    <x-nav-pill
+                        icon="squares-2x2"
+                        :href="route('dashboard')"
+                        :current="request()->routeIs('dashboard')"
+                        class="max-lg:hidden"
+                        wire:navigate
+                    >
+                        {{ __('Panel') }}
+                    </x-nav-pill>
 
-                <flux:navbar.item
-                    icon="layout-grid"
-                    class="h-10 max-lg:hidden [&>div>svg]:size-5"
-                    :href="route('dashboard')"
-                    :current="request()->routeIs('dashboard')" wire:navigate>
-                    {{ __('Panel') }}
-                </flux:navbar.item>
-
-                {{-- Los mismos roles que protegen el bloque `backoffice.` en routes/web.php. --}}
-                @if (auth()->user()->hasAnyRole(['agente', 'administrador', 'superadministrador']))
-
-                    <flux:navbar.item
-                        icon="briefcase"
-                        class="h-10 max-lg:hidden [&>div>svg]:size-5"
-                        :href="route('backoffice.index')"
-                        :current="request()->routeIs('backoffice.*')" wire:navigate>
-                        {{ __('Backoffice') }}
-                    </flux:navbar.item>
-
-                @endif
-
+                    {{-- Los mismos roles que protegen el bloque `backoffice.` en routes/web.php. --}}
+                    @if (auth()->user()->hasAnyRole(['agente', 'administrador', 'superadministrador']))
+                        <x-nav-pill
+                            icon="briefcase"
+                            :href="route('backoffice.index')"
+                            :current="request()->routeIs('backoffice.*')"
+                            class="max-lg:hidden"
+                            wire:navigate
+                        >
+                            {{ __('Backoffice') }}
+                        </x-nav-pill>
+                    @endif
                 @endauth
 
-            </flux:navbar>
+                <x-appearance-toggle class="ms-1.5" />
 
-            @auth
-                <x-desktop-user-menu />
-            @else
-                <flux:navbar class="space-x-0.5">
-                    <flux:navbar.item :href="route('login')" wire:navigate>
-                        {{ __('Iniciar sesión') }}
-                    </flux:navbar.item>
-                    <flux:navbar.item :href="route('register')" wire:navigate>
+                @auth
+                    <x-desktop-user-menu class="ms-1.5" />
+                @else
+                    {{-- Registro en `ghost` y acceso en `primary`: son dos
+                         acciones seguidas y solo una puede llevar el peso. --}}
+                    <flux:button
+                        :href="route('register')"
+                        variant="ghost"
+                        size="sm"
+                        class="ms-1.5 !text-ink-2"
+                        wire:navigate
+                    >
                         {{ __('Registrarse') }}
-                    </flux:navbar.item>
-                </flux:navbar>
-            @endauth
+                    </flux:button>
+
+                    <flux:button
+                        :href="route('login')"
+                        variant="primary"
+                        size="sm"
+                        wire:navigate
+                    >
+                        {{ __('Iniciar sesión') }}
+                    </flux:button>
+                @endauth
+            </div>
         </flux:header>
 
         <!-- Mobile Menu -->
-        <flux:sidebar collapsible="mobile" sticky class="lg:hidden border-e border-azul-200 bg-azul-100 dark:border-azul-900 dark:bg-azul-800">
+        <flux:sidebar collapsible="mobile" sticky class="lg:hidden border-e border-line bg-surface">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" href="{{ route('home') }}" wire:navigate />
                 <flux:sidebar.collapse class="in-data-flux-sidebar-on-desktop:not-in-data-flux-sidebar-collapsed-desktop:-mr-2" />
@@ -69,8 +79,8 @@
             @auth
                 <flux:sidebar.nav>
                     <flux:sidebar.group :heading="__('Plataforma')">
-                        <flux:sidebar.item icon="layout-grid" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
-                            {{ __('Panel')  }}
+                        <flux:sidebar.item icon="squares-2x2" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
+                            {{ __('Panel') }}
                         </flux:sidebar.item>
                     </flux:sidebar.group>
                 </flux:sidebar.nav>

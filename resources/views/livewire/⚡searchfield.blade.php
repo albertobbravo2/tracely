@@ -86,16 +86,21 @@ new class extends Component
 
 };
 ?>
-
 <div>
-    <form wire:submit="search" class="mx-auto flex max-w-xl items-center gap-3">
+    {{-- Caja del buscador: una sola superficie con borde, con el input y el
+         botón dentro. El icono de lupa lo pone Flux con `icon=`. --}}
+    <form
+        wire:submit="search"
+        class="mx-auto flex w-full max-w-2xl flex-col gap-2 rounded-2xl border border-line bg-surface p-2 sm:flex-row sm:items-center"
+    >
         <flux:input
             wire:model="tracking_number"
             name="tracking_number"
+            icon="magnifying-glass"
             aria-label="{{ __('Número de guía') }}"
             placeholder="RY-4820-1174-MX"
             class="flex-1"
-            class:input="!border-transparent !bg-blanco !text-gris-900 !shadow-none placeholder:!text-gris-400"
+            class:input="!h-12 !border-transparent !bg-transparent !text-ink !shadow-none placeholder:!text-ink-muted"
         />
 
         <flux:button
@@ -103,19 +108,21 @@ new class extends Component
             variant="primary"
             wire:loading.attr="disabled"
             wire:target="search"
-            class="shrink-0 px-6 font-semibold [--color-accent-foreground:var(--color-white)] [--color-accent:var(--color-brand-navy)]"
+            class="!h-12 shrink-0 px-7 font-semibold shadow-elev"
         >
             <span wire:loading.remove wire:target="search">{{ __('Buscar') }}</span>
             <span wire:loading wire:target="search">{{ __('Buscando...') }}</span>
         </flux:button>
     </form>
 
-    <div class="mx-auto mt-4 max-w-xl text-start">
-        <flux:error name="tracking_number" />
+    <div class="mx-auto mt-4 max-w-2xl text-start">
+        <flux:error name="tracking_number" class="text-center" />
 
         @if ($errorMessage)
-            <div class="rounded-xl border border-gris-200 bg-gris-050 px-4 py-3 dark:border-azul-800 dark:bg-azul-900">
-                <flux:text class="text-gris-600 dark:text-azul-100">{{ $errorMessage }}</flux:text>
+            <div class="flex items-start gap-3 rounded-xl border border-line bg-surface px-4 py-3">
+                <flux:icon name="exclamation-triangle" variant="outline" class="mt-0.5 size-5 shrink-0 text-warn" />
+
+                <flux:text class="text-ink-2">{{ $errorMessage }}</flux:text>
             </div>
         @endif
 

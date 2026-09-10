@@ -18,6 +18,7 @@
                 type="email"
                 required
                 autocomplete="email"
+                placeholder="email@example.com"
             />
 
             <!-- Password -->
@@ -44,11 +45,19 @@
                 viewable
             />
 
-            <div class="flex items-center justify-end">
-                <flux:button type="submit" variant="primary" class="w-full" data-test="reset-password-button">
-                    {{ __('Restablecer contraseña') }}
-                </flux:button>
-            </div>
+            <flux:button
+                type="submit"
+                variant="primary"
+                class="w-full shadow-elev"
+                data-test="reset-password-button"
+            >
+                {{ __('Restablecer contraseña') }}
+            </flux:button>
         </form>
+
+        <div class="space-x-1 text-sm text-center rtl:space-x-reverse text-ink-2">
+            <span>{{ __('O vuelve a') }}</span>
+            <flux:link :href="route('login')" wire:navigate>{{ __('iniciar sesión') }}</flux:link>
+        </div>
     </div>
 </x-layouts::auth>

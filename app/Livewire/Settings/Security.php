@@ -19,7 +19,7 @@ use Livewire\Attributes\Title;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
 
-#[Title('Security settings')]
+#[Title('Ajustes · Seguridad')]
 class Security extends Component
 {
     use PasswordValidationRules;
@@ -289,24 +289,24 @@ class Security extends Component
     {
         if ($this->twoFactorEnabled) {
             return [
-                'title' => __('Two-factor authentication enabled'),
-                'description' => __('Two-factor authentication is now enabled. Scan the QR code or enter the setup key in your authenticator app.'),
-                'buttonText' => __('Close'),
+                'title' => __('Verificación en dos pasos activada'),
+                'description' => __('La verificación en dos pasos ya está activa. Escanea el código QR o introduce la clave de configuración en tu aplicación de autenticación.'),
+                'buttonText' => __('Cerrar'),
             ];
         }
 
         if ($this->showVerificationStep) {
             return [
-                'title' => __('Verify authentication code'),
-                'description' => __('Enter the 6-digit code from your authenticator app.'),
-                'buttonText' => __('Continue'),
+                'title' => __('Verifica el código de autenticación'),
+                'description' => __('Introduce el código de 6 dígitos de tu aplicación de autenticación.'),
+                'buttonText' => __('Continuar'),
             ];
         }
 
         return [
-            'title' => __('Enable two-factor authentication'),
-            'description' => __('To finish enabling two-factor authentication, scan the QR code or enter the setup key in your authenticator app.'),
-            'buttonText' => __('Continue'),
+            'title' => __('Activa la verificación en dos pasos'),
+            'description' => __('Para terminar de activar la verificación en dos pasos, escanea el código QR o introduce la clave de configuración en tu aplicación de autenticación.'),
+            'buttonText' => __('Continuar'),
         ];
     }
 }

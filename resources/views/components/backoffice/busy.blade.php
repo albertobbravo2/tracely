@@ -28,7 +28,7 @@
         wire:target="{{ $target }}"
         wire:loading.flex
     >
-        <flux:icon name="loading" class="size-6 text-azul-600 dark:text-azul-200" />
+        <flux:icon name="loading" class="size-6 text-primary" />
 
         <flux:text class="sr-only">{{ __('Cargando resultados...') }}</flux:text>
     </div>

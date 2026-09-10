@@ -9,6 +9,45 @@
 
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-display: 'Instrument Serif', ui-serif, Georgia, serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+    /* Tokens semánticos del diseño — ver design.md. Son la paleta vigente:
+       los valores de modo oscuro se redefinen más abajo, en `.dark`. */
+    --color-canvas: #F5F7FC;
+    --color-surface: #FFFFFF;
+    --color-surface-2: #EEF2F9;
+
+    --color-line: #E1E7F1;
+    --color-line-strong: #CBD5E6;
+
+    --color-ink: #0C1220;
+    --color-ink-2: #3D4863;
+    --color-ink-muted: #6B7793;
+
+    --color-primary: #2549E6;
+    --color-primary-hover: #1B39C4;
+    --color-primary-soft: #E7ECFF;
+    --color-on-primary: #FFFFFF;
+
+    /* Estados. El mapeo con `ShipmentStatus` vive en x-backoffice.status-badge. */
+    --color-ok: #047857;
+    --color-ok-soft: #DCFAEC;
+    --color-info: #1D5FD6;
+    --color-info-soft: #E3EEFF;
+    --color-aduana: #6D3BD9;
+    --color-aduana-soft: #EFE7FE;
+    --color-warn: #B45309;
+    --color-warn-soft: #FDF0DA;
+    --color-danger: #C81E37;
+    --color-danger-soft: #FDE8EC;
+    --color-idle: #5A6580;
+    --color-idle-soft: #EDF0F6;
+
+    --color-shadow: #0C122014;
+
+    --shadow-elev: 0 4px 12px var(--color-shadow);
+    --shadow-modal: 0 8px 24px var(--color-shadow);
 
     --color-zinc-50: #fafafa;
     --color-zinc-100: #f5f5f5;
@@ -22,48 +61,57 @@
     --color-zinc-900: #171717;
     --color-zinc-950: #0a0a0a;
 
-    --color-accent: var(--color-neutral-800);
-    --color-accent-content: var(--color-neutral-800);
-    --color-accent-foreground: var(--color-white);
+    /* `accent` es el token con el que Flux pinta botones primarios, enlaces y
+       anillos de foco. Apuntarlo al primario del diseño evita tener que
+       sobreescribir el color en cada `<flux:button variant="primary">`. */
+    --color-accent: var(--color-primary);
+    --color-accent-content: var(--color-primary);
+    --color-accent-foreground: var(--color-on-primary);
 
-    --color-brand-navy: #0b1f4b;
-
-    /* Azul — principal (marca, botones, header) */
-    --color-azul-900: #042C53;
-    --color-azul-800: #0C447C;
-    --color-azul-600: #185FA5;
-    --color-azul-400: #378ADD;
-    --color-azul-200: #85B7EB;
-    --color-azul-100: #B5D4F4;
-    --color-azul-050: #E6F1FB;
-
-    /* Verde — estados de confirmación (entregado / completado) */
-    --color-ok-fuerte: #0F6E56;
-    --color-ok: #1D9E75;
-    --color-ok-claro: #5DCAA5;
-    --color-ok-fondo: #E1F5EE;
-
-    /* Rojo — incidencias y estados de error */
-    --color-alerta-fuerte: #8E2C22;
-    --color-alerta: #C4402F;
-    --color-alerta-claro: #E89285;
-    --color-alerta-fondo: #FBEAE7;
-
-    /* Gris — interfaz y pasos pendientes */
-    --color-gris-900: #2C2C2A;
-    --color-gris-600: #5F5E5A;
-    --color-gris-400: #888780;
-    --color-gris-200: #D3D1C7;
-    --color-gris-050: #F1EFE8;
-
-    --color-blanco: #FFFFFF;
 }
 
 @layer theme {
     .dark {
-        --color-accent: var(--color-white);
-        --color-accent-content: var(--color-white);
-        --color-accent-foreground: var(--color-neutral-800);
+        /* `accent` sí hay que repetirlo: Flux trae su propia regla `.dark` que
+           lo pone en blanco, y con la misma especificidad gana la última. Sin
+           esto, en oscuro todos los botones primarios salen blancos. */
+        --color-accent: var(--color-primary);
+        --color-accent-content: var(--color-primary);
+        --color-accent-foreground: var(--color-on-primary);
+
+        /* Contrapartes oscuras de los tokens del diseño. Las utilidades de
+           Tailwind v4 compilan a `var(--color-…)`, así que redefinir aquí la
+           variable basta: no hace falta duplicar clases con `dark:`. */
+        --color-canvas: #080B12;
+        --color-surface: #111826;
+        --color-surface-2: #18202F;
+
+        --color-line: #232C3D;
+        --color-line-strong: #313C52;
+
+        --color-ink: #EEF2FA;
+        --color-ink-2: #B9C4D9;
+        --color-ink-muted: #7C89A3;
+
+        --color-primary: #7D97FF;
+        --color-primary-hover: #98ADFF;
+        --color-primary-soft: #1B2440;
+        --color-on-primary: #0A1024;
+
+        --color-ok: #4ADE9B;
+        --color-ok-soft: #0C2B22;
+        --color-info: #78B4FF;
+        --color-info-soft: #0F2440;
+        --color-aduana: #B99BFF;
+        --color-aduana-soft: #211838;
+        --color-warn: #FBBF5C;
+        --color-warn-soft: #2E2110;
+        --color-danger: #FF8A9B;
+        --color-danger-soft: #33131A;
+        --color-idle: #98A4BC;
+        --color-idle-soft: #1C2434;
+
+        --color-shadow: #00000066;
     }
 }
 
@@ -119,36 +167,34 @@ input[type='password']::-ms-clear {
    concreta sigue ganando. */
 
 .backoffice [data-flux-table] :is([data-flux-column], [data-flux-cell]) {
-    border-color: var(--color-gris-200);
+    border-color: var(--color-line);
 }
 
 .backoffice [data-flux-table] [data-flux-column] {
-    color: var(--color-gris-900);
+    color: var(--color-ink-muted);
 }
 
 .backoffice [data-flux-table] [data-flux-cell] {
-    color: var(--color-gris-600);
+    color: var(--color-ink-2);
 }
 
 .backoffice [data-flux-modal] dialog {
-    background-color: var(--color-blanco);
+    background-color: var(--color-surface);
+    --tw-ring-color: var(--color-line);
 }
 
-.dark .backoffice [data-flux-table] :is([data-flux-column], [data-flux-cell]) {
-    border-color: var(--color-azul-800);
+/* El item activo del sidebar es una píldora sobre `primary-soft` (design.md →
+   Sidebar). Flux lo pinta blanco con borde y sombra, así que se neutraliza
+   aquí en vez de repetir `data-current:` en cada uno de los items. */
+.backoffice [data-flux-sidebar-item] {
+    border-radius: 10px;
 }
 
-.dark .backoffice [data-flux-table] [data-flux-column] {
-    color: var(--color-blanco);
-}
-
-.dark .backoffice [data-flux-table] [data-flux-cell] {
-    color: var(--color-azul-100);
-}
-
-.dark .backoffice [data-flux-modal] dialog {
-    background-color: var(--color-azul-900);
-    --tw-ring-color: var(--color-azul-800);
+.backoffice [data-flux-sidebar-item][data-current] {
+    background-color: var(--color-primary-soft);
+    border-color: transparent;
+    box-shadow: none;
+    color: var(--color-primary);
 }
 
 /* \[:where(&)\]:size-4 {

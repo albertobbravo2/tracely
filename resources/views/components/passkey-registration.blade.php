@@ -66,7 +66,7 @@
     }"
 >
     <template x-if="!supported">
-        <flux:text>{{ __('Este navegador no admite passkeys.') }}</flux:text>
+        <flux:text class="text-ink-2">{{ __('Este navegador no admite passkeys.') }}</flux:text>
     </template>
 
     <template x-if="supported && !showForm">
@@ -82,7 +82,7 @@
     </template>
 
     <template x-if="supported && showForm">
-        <div class="space-y-4 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-4">
+        <div class="space-y-4 rounded-xl border border-line bg-surface-2 p-4">
             <flux:input
                 label="{{ __('Nombre de la passkey') }}"
                 x-model="name"
@@ -91,9 +91,9 @@
                 x-ref="passkeyNameInput"
                 x-init="$nextTick(() => $refs.passkeyNameInput?.focus())"
             />
-            <flux:text class="!mt-1">{{ __('Ponle un nombre a esta passkey para identificarla más adelante.') }}</flux:text>
+            <flux:text class="!mt-1 text-ink-muted">{{ __('Ponle un nombre a esta passkey para identificarla más adelante.') }}</flux:text>
 
-            <p x-show="error" x-text="error" x-cloak class="text-sm text-red-600 dark:text-red-400"></p>
+            <p x-show="error" x-text="error" x-cloak class="text-sm text-danger"></p>
 
             <div class="flex gap-2">
                 <flux:button

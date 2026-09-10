@@ -503,9 +503,13 @@ class extends BackofficeComponent
                 </x-backoffice.empty>
             @endif
         @else
-            <div class="space-y-4">
-                <flux:table>
-                    <flux:table.columns>
+            {{-- Tabla como tarjeta: `surface` con borde, cabecera sobre `surface-2`
+                 y filas separadas por 1 px de `line` (design.md → Tabla). Las
+                 celdas de los extremos recuperan el padding lateral que Flux les
+                 quita (`first:ps-0`), que aquí las pegaba al borde de la tarjeta. --}}
+            <div class="overflow-hidden rounded-xl border border-line bg-surface">
+                <flux:table class="[&_td:first-child]:ps-5 [&_td:last-child]:pe-5 [&_th:first-child]:ps-5 [&_th:last-child]:pe-5">
+                    <flux:table.columns class="bg-surface-2 [&_th]:text-xs [&_th]:font-semibold">
                         <flux:table.column align="center">{{ __('Guía') }}</flux:table.column>
                         <flux:table.column align="center" class="max-md:hidden">{{ __('Destinatario') }}</flux:table.column>
                         <flux:table.column align="center" class="max-lg:hidden">{{ __('Ruta') }}</flux:table.column>
@@ -518,14 +522,14 @@ class extends BackofficeComponent
                         @foreach ($shipments as $shipment)
                             <flux:table.row :key="$shipment['id']">
                                 <flux:table.cell>
-                                    <span class="font-semibold text-gris-900 dark:text-blanco">
+                                    <span class="font-semibold text-primary">
                                         {{ $shipment['tracking_number'] }}
                                     </span>
 
                                     {{-- En móvil solo caben dos columnas sin empujar las
                                          acciones fuera de pantalla, así que lo demás
                                          —incluido el estado— se pliega aquí debajo. --}}
-                                    <span class="block text-sm text-gris-600 md:hidden dark:text-azul-200">
+                                    <span class="block text-sm text-ink-2 md:hidden">
                                         {{ $shipment['receiver_name'] }} · {{ $shipment['destination'] }}
                                     </span>
 
@@ -583,7 +587,9 @@ class extends BackofficeComponent
                     </flux:table.rows>
                 </flux:table>
 
-                <x-backoffice.pagination :meta="$meta" />
+                <div class="px-5 pb-4">
+                    <x-backoffice.pagination :meta="$meta" />
+                </div>
             </div>
         @endif
     </x-backoffice.busy>
@@ -721,23 +727,26 @@ class extends BackofficeComponent
             {{-- La cabecera exacta que espera el endpoint. Es lo primero que
                  hace falta para preparar el fichero, así que va en el modal y
                  no en una ayuda aparte. --}}
-            <div class="rounded-xl border border-gris-200 bg-gris-050 px-4 py-3 dark:border-azul-800 dark:bg-azul-900">
-                <flux:text class="font-medium text-gris-900 dark:text-blanco">{{ __('Columnas del fichero') }}</flux:text>
+            <div class="rounded-xl border border-line bg-surface-2 px-4 py-3">
+                <flux:text class="font-medium text-ink">{{ __('Columnas del fichero') }}</flux:text>
 
-                <flux:text class="mt-1 text-gris-600 dark:text-azul-100">
+                <flux:text class="mt-1 text-ink-2">
                     {{ __('Obligatorias:') }}
                     <span class="font-mono">tracking_number, receiver_name, origin, destination, estimated_delivery_date</span>
                 </flux:text>
 
-                <flux:text class="mt-1 text-gris-600 dark:text-azul-100">
+                <flux:text class="mt-1 text-ink-2">
                     {{ __('Opcionales:') }}
                     <span class="font-mono">status, history_location, history_description</span>
                 </flux:text>
             </div>
 
-            <flux:text class="text-gris-600 dark:text-azul-100">
-                {{ __('La fecha admite 2026-10-01 o 01/10/2026. El remitente y la empresa salen de tu cuenta, no del fichero.
-                Máximo 1.000 filas por fichero.') }}
+            <flux:text class="text-ink-2">
+                {{ __('La fecha admite 2026-10-01 o 01/10/2026. El remitente y la empresa salen de tu cuenta, no del fichero.') }}
+            </flux:text>
+
+            <flux:text class="text-ink-2">
+                {{ __('Máximo 1.000 filas por fichero.') }}
             </flux:text>
 
             <flux:field>
@@ -745,7 +754,7 @@ class extends BackofficeComponent
                 <flux:input type="file" wire:model="file" accept=".csv,text/csv" />
                 <flux:error name="file" />
 
-                <flux:text wire:loading wire:target="file" class="text-gris-600 dark:text-azul-100">
+                <flux:text wire:loading wire:target="file" class="text-ink-2">
                     {{ __('Subiendo el fichero...') }}
                 </flux:text>
             </flux:field>
@@ -757,7 +766,7 @@ class extends BackofficeComponent
             @if ($importResult)
                 <div class="space-y-3">
                     <div class="flex flex-wrap items-center gap-2">
-                        <x-backoffice.tone-badge tone="gris">
+                        <x-backoffice.tone-badge tone="idle">
                             {{ __(':filas filas leídas', ['filas' => $importResult['total'] ?? 0]) }}
                         </x-backoffice.tone-badge>
 
@@ -766,7 +775,7 @@ class extends BackofficeComponent
                         </x-backoffice.tone-badge>
 
                         @if (($importResult['failed'] ?? 0) > 0)
-                            <x-backoffice.tone-badge tone="alerta">
+                            <x-backoffice.tone-badge tone="danger">
                                 {{ __(':fallidos con error', ['fallidos' => $importResult['failed']]) }}
                             </x-backoffice.tone-badge>
                         @endif
@@ -793,7 +802,7 @@ class extends BackofficeComponent
                                             </flux:table.cell>
 
                                             <flux:table.cell>
-                                                <span class="text-alerta-fuerte dark:text-alerta-claro">
+                                                <span class="text-danger">
                                                     {{ implode(' ', $error['errors'] ?? []) }}
                                                 </span>
                                             </flux:table.cell>

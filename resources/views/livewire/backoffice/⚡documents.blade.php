@@ -36,6 +36,13 @@ class extends BackofficeComponent
      */
     public string $tracking_number = '';
 
+    /**
+     * Coincidencias que se ofrecen mientras se teclea la guía.
+     *
+     * @var list<array{tracking_number: string, label: string}>
+     */
+    public array $trackingSuggestions = [];
+
     public string $document_name = '';
 
     public string $status = '';
@@ -247,6 +254,73 @@ class extends BackofficeComponent
      * Recibe la petición ya autenticada para reutilizar el token de quien
      * llama en vez de acuñar uno nuevo solo para esta consulta.
      */
+    /**
+     * Buscar pedidos mientras se teclea la guía en el formulario.
+     *
+     * Va contra `shipments.index`, el mismo endpoint que resuelve la guía al
+     * guardar, así que las sugerencias respetan el filtro por empresa que la
+     * API ya aplica: a nadie se le ofrece un pedido que luego no podría usar.
+     */
+    public function updatedTrackingNumber(): void
+    {
+        $this->trackingSuggestions = [];
+
+        $term = trim($this->tracking_number);
+
+        // Con una sola letra la lista sería medio catálogo y no ayuda a elegir.
+        if (mb_strlen($term) < 2) {
+            return;
+        }
+
+        $response = $this->callApi(fn (PendingRequest $api) => $api->get(
+            route('shipments.index', absolute: false),
+            ['search' => $term],
+        ));
+
+        if ($response === null || $response->failed()) {
+            return;
+        }
+
+        $rows = $response->json('data');
+
+        if (! is_array($rows)) {
+            return;
+        }
+
+        $this->trackingSuggestions = collect($rows)
+            ->filter(fn (mixed $row): bool => is_array($row))
+            ->map(fn (array $row): array => [
+                'tracking_number' => (string) ($row['tracking_number'] ?? ''),
+                'label' => implode(' · ', array_filter([
+                    $row['receiver_name'] ?? null,
+                    $row['destination'] ?? null,
+                ])),
+            ])
+            ->filter(fn (array $row): bool => $row['tracking_number'] !== '')
+            // Si la guía ya está escrita entera no queda nada que sugerir.
+            ->reject(fn (array $row): bool => $row['tracking_number'] === $term)
+            ->take(6)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Elegir una sugerencia. Se identifica por posición y no por su número de
+     * guía para que la vista no tenga que meter texto de la API dentro de una
+     * expresión `wire:click`.
+     */
+    public function selectTracking(int $index): void
+    {
+        $suggestion = $this->trackingSuggestions[$index] ?? null;
+
+        if ($suggestion === null) {
+            return;
+        }
+
+        $this->tracking_number = $suggestion['tracking_number'];
+        $this->trackingSuggestions = [];
+    }
+
     private function resolveShipmentId(PendingRequest $api, string $trackingNumber): ?int
     {
         $lookup = $api->get(route('shipments.index', absolute: false), ['search' => $trackingNumber]);
@@ -266,6 +340,7 @@ class extends BackofficeComponent
 
         $this->editing = null;
         $this->tracking_number = '';
+        $this->trackingSuggestions = [];
         $this->document_name = '';
         $this->status = '';
         $this->file = null;
@@ -352,9 +427,13 @@ class extends BackofficeComponent
                 </x-backoffice.empty>
             @endif
         @else
-            <div class="space-y-4">
-                <flux:table>
-                    <flux:table.columns>
+            {{-- Tabla como tarjeta: `surface` con borde, cabecera sobre `surface-2`
+                 y filas separadas por 1 px de `line` (design.md → Tabla). Las
+                 celdas de los extremos recuperan el padding lateral que Flux les
+                 quita (`first:ps-0`), que aquí las pegaba al borde de la tarjeta. --}}
+            <div class="overflow-hidden rounded-xl border border-line bg-surface">
+                <flux:table class="[&_td:first-child]:ps-5 [&_td:last-child]:pe-5 [&_th:first-child]:ps-5 [&_th:last-child]:pe-5">
+                    <flux:table.columns class="bg-surface-2 [&_th]:text-xs [&_th]:font-semibold">
                         <flux:table.column align="center">{{ __('Documento') }}</flux:table.column>
                         <flux:table.column align="center" class="max-sm:hidden">{{ __('Guía') }}</flux:table.column>
                         <flux:table.column align="center" class="max-md:hidden">{{ __('Estado') }}</flux:table.column>
@@ -366,18 +445,18 @@ class extends BackofficeComponent
                             <flux:table.row :key="$document['id']">
                                 <flux:table.cell>
                                     <div class="flex items-center gap-3">
-                                        <flux:icon name="paper-clip" variant="outline" class="size-4 shrink-0 text-gris-400 dark:text-azul-200" />
+                                        <flux:icon name="paper-clip" variant="outline" class="size-4 shrink-0 text-ink-muted" />
 
                                         {{-- `min-w-0` para que el truncado de dentro
                                              tenga contra qué truncar: sin él un nombre
                                              de fichero largo ensancha la celda y empuja
                                              las acciones fuera de la pantalla. --}}
                                         <div class="min-w-0">
-                                            <span class="block truncate font-semibold text-gris-900 dark:text-blanco">
+                                            <span class="block truncate font-semibold text-ink">
                                                 {{ $document['document_name'] }}
                                             </span>
 
-                                            <span class="block truncate text-sm text-gris-600 sm:hidden dark:text-azul-200">
+                                            <span class="block truncate text-sm text-ink-2 sm:hidden">
                                                 {{ $document['shipment']['tracking_number'] ?? '—' }}
                                             </span>
 
@@ -394,7 +473,9 @@ class extends BackofficeComponent
                                 </flux:table.cell>
 
                                 <flux:table.cell class="whitespace-nowrap max-sm:hidden">
-                                    {{ $document['shipment']['tracking_number'] ?? '—' }}
+                                    <span class="font-medium text-primary">
+                                        {{ $document['shipment']['tracking_number'] ?? '—' }}
+                                    </span>
                                 </flux:table.cell>
 
                                 <flux:table.cell align="center" class="max-md:hidden">
@@ -447,7 +528,9 @@ class extends BackofficeComponent
                     </flux:table.rows>
                 </flux:table>
 
-                <x-backoffice.pagination :meta="$meta" />
+                <div class="px-5 pb-4">
+                    <x-backoffice.pagination :meta="$meta" />
+                </div>
             </div>
         @endif
     </x-backoffice.busy>
@@ -461,7 +544,54 @@ class extends BackofficeComponent
             <div class="space-y-4">
                 <flux:field>
                     <flux:label>{{ __('Número de guía del pedido') }}</flux:label>
-                    <flux:input wire:model="tracking_number" placeholder="TRC-0000000001" />
+
+                    {{-- Flux no trae combobox con búsqueda en esta edición —solo
+                         el `select` nativo—, así que la lista de coincidencias va
+                         con utilidades sobre el `flux:input`. --}}
+                    <div
+                        class="relative"
+                        x-data="{ open: false }"
+                        x-on:click.outside="open = false"
+                        x-on:keydown.escape="open = false"
+                    >
+                        <flux:input
+                            wire:model.live.debounce.300ms="tracking_number"
+                            placeholder="TRC-0000000001"
+                            autocomplete="off"
+                            x-on:focus="open = true"
+                            x-on:input="open = true"
+                        />
+
+                        @if ($trackingSuggestions !== [])
+                            <div
+                                x-show="open"
+                                x-cloak
+                                class="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-[10px] border border-line bg-surface shadow-modal"
+                            >
+                                <ul class="max-h-56 overflow-y-auto py-1">
+                                    @foreach ($trackingSuggestions as $index => $suggestion)
+                                        <li>
+                                            <button
+                                                type="button"
+                                                wire:click="selectTracking({{ $index }})"
+                                                x-on:click="open = false"
+                                                class="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-start transition-colors hover:bg-primary-soft"
+                                            >
+                                                <span class="font-mono text-sm font-semibold text-primary">
+                                                    {{ $suggestion['tracking_number'] }}
+                                                </span>
+
+                                                @if ($suggestion['label'] !== '')
+                                                    <span class="text-xs text-ink-muted">{{ $suggestion['label'] }}</span>
+                                                @endif
+                                            </button>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+                    </div>
+
                     <flux:error name="tracking_number" />
                     <flux:error name="shipment_id" />
                 </flux:field>
@@ -489,9 +619,9 @@ class extends BackofficeComponent
                     <flux:error name="file" />
 
                     <div class="hidden items-center gap-2" wire:loading.flex wire:target="file">
-                        <flux:icon name="loading" variant="micro" class="text-azul-600 dark:text-azul-200" />
+                        <flux:icon name="loading" variant="micro" class="text-primary" />
 
-                        <flux:text class="text-gris-600 dark:text-azul-100">{{ __('Subiendo fichero...') }}</flux:text>
+                        <flux:text class="text-ink-2">{{ __('Subiendo fichero...') }}</flux:text>
                     </div>
                 </flux:field>
             </div>

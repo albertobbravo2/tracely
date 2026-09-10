@@ -249,9 +249,13 @@ class extends BackofficeComponent
                 </x-backoffice.empty>
             @endif
         @else
-            <div class="space-y-4">
-                <flux:table>
-                    <flux:table.columns>
+            {{-- Tabla como tarjeta: `surface` con borde, cabecera sobre `surface-2`
+                 y filas separadas por 1 px de `line` (design.md → Tabla). Las
+                 celdas de los extremos recuperan el padding lateral que Flux les
+                 quita (`first:ps-0`), que aquí las pegaba al borde de la tarjeta. --}}
+            <div class="overflow-hidden rounded-xl border border-line bg-surface">
+                <flux:table class="[&_td:first-child]:ps-5 [&_td:last-child]:pe-5 [&_th:first-child]:ps-5 [&_th:last-child]:pe-5">
+                    <flux:table.columns class="bg-surface-2 [&_th]:text-xs [&_th]:font-semibold">
                         <flux:table.column align="center">{{ __('Empresa') }}</flux:table.column>
                         <flux:table.column align="center" class="max-md:hidden">{{ __('Contacto') }}</flux:table.column>
                         <flux:table.column align="center" class="max-sm:hidden">{{ __('Teléfono') }}</flux:table.column>
@@ -270,13 +274,13 @@ class extends BackofficeComponent
 
                             <flux:table.row :key="$company['id']">
                                 <flux:table.cell>
-                                    <span class="font-semibold text-gris-900 dark:text-blanco">{{ $company['name'] }}</span>
-                                    <span class="block text-sm text-gris-600 dark:text-azul-200">{{ $company['slug'] }}</span>
+                                    <span class="font-semibold text-ink">{{ $company['name'] }}</span>
+                                    <span class="block text-sm text-ink-2">{{ $company['slug'] }}</span>
 
                                     {{-- En móvil solo caben dos columnas sin empujar las
                                          acciones fuera de pantalla. --}}
                                     <span class="mt-1 block sm:hidden">
-                                        <x-backoffice.tone-badge :tone="$activa ? 'ok' : 'gris'">
+                                        <x-backoffice.tone-badge :tone="$activa ? 'ok' : 'idle'">
                                             {{ $activa ? __('Activa') : __('Inactiva') }}
                                         </x-backoffice.tone-badge>
                                     </span>
@@ -289,7 +293,7 @@ class extends BackofficeComponent
                                 </flux:table.cell>
 
                                 <flux:table.cell align="center" class="max-sm:hidden">
-                                    <x-backoffice.tone-badge :tone="$activa ? 'ok' : 'gris'">
+                                    <x-backoffice.tone-badge :tone="$activa ? 'ok' : 'idle'">
                                         {{ $activa ? __('Activa') : __('Inactiva') }}
                                     </x-backoffice.tone-badge>
                                 </flux:table.cell>
@@ -317,7 +321,9 @@ class extends BackofficeComponent
                     </flux:table.rows>
                 </flux:table>
 
-                <x-backoffice.pagination :meta="$meta" />
+                <div class="px-5 pb-4">
+                    <x-backoffice.pagination :meta="$meta" />
+                </div>
             </div>
         @endif
     </x-backoffice.busy>

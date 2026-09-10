@@ -267,17 +267,89 @@ class extends BackofficeComponent
 };
 ?>
 
-<div class="space-y-6">
-    <x-backoffice.heading
-        :heading="$editing"
-        :subheading="__('Edita el pedido o elimínalo. Su historial se gestiona desde Historial de pedidos.')"
-    >
-        <x-slot:actions>
+<div class="space-y-8">
+
+    @php
+        $estadoActual = ShipmentStatus::tryFrom((string) ($shipment['status'] ?? ''));
+
+        // Recorrido normal de un envío. `incidencia` no es un paso del recorrido:
+        // es una salida de él, así que cuando el pedido está en ese estado no se
+        // marca ningún nodo y se avisa debajo del stepper.
+        $pasos = [
+            ['case' => ShipmentStatus::Pendiente, 'icon' => 'clock'],
+            ['case' => ShipmentStatus::EnTransito, 'icon' => 'truck'],
+            ['case' => ShipmentStatus::EnAduana, 'icon' => 'building-office-2'],
+            ['case' => ShipmentStatus::Entregado, 'icon' => 'check-circle'],
+        ];
+
+        $indiceActual = match ($estadoActual) {
+            ShipmentStatus::Pendiente => 0,
+            ShipmentStatus::EnTransito => 1,
+            ShipmentStatus::EnAduana => 2,
+            ShipmentStatus::Entregado => 3,
+            default => -1,
+        };
+
+        // Fechas: la API serializa en UTC y la interfaz va en español, así que las
+        // dos cosas se fijan aquí igual que en las listas.
+        $fecha = fn (?string $valor, bool $conHora = false) => $valor
+            ? Carbon::parse($valor)->timezone(config('app.timezone'))->locale('es')->translatedFormat($conHora ? 'j M Y · H:i' : 'j M Y')
+            : '—';
+
+        $empresa = collect($companies)->firstWhere('id', $shipment['company_id'] ?? null)['name'] ?? null;
+    @endphp
+
+    {{-- Cabecera: migas, la guía como título —en `font-mono`, que es lo que
+         design.md reserva para el número de guía destacado— y las acciones del
+         pedido a la derecha. --}}
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div class="min-w-0">
+            <nav aria-label="{{ __('Migas de pan') }}" class="flex items-center gap-1.5 text-sm text-ink-muted">
+                <a href="{{ route('backoffice.shipments') }}" wire:navigate class="hover:text-primary">
+                    {{ __('Pedidos') }}
+                </a>
+
+                <span aria-hidden="true">/</span>
+
+                <span class="truncate">{{ $editing }}</span>
+            </nav>
+
+            <div class="mt-2 flex flex-wrap items-center gap-3">
+                <h1 class="font-mono text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+                    {{ $editing }}
+                </h1>
+
+                @if (! empty($shipment))
+                    <x-backoffice.status-badge :status="$shipment['status'] ?? null" />
+                @endif
+            </div>
+
+            <flux:text class="mt-2 text-ink-2">
+                {{ __('Sigue el progreso del pedido, revisa sus datos y edítalo si hace falta.') }}
+            </flux:text>
+        </div>
+
+        <div class="flex shrink-0 flex-wrap items-center gap-2">
             <flux:button icon="arrow-left" :href="route('backoffice.shipments')" wire:navigate>
                 {{ __('Volver a pedidos') }}
             </flux:button>
-        </x-slot:actions>
-    </x-backoffice.heading>
+
+            @if (! empty($shipment))
+                {{-- El alta de evento no la resuelve esta pantalla: la dispara
+                     para que la atienda la lista del historial, que es quien
+                     tiene el formulario y quien tiene que refrescarse después. --}}
+                <flux:button icon="plus" wire:click="$dispatch('crear-evento-historial')">
+                    {{ __('Nuevo evento') }}
+                </flux:button>
+
+                <flux:modal.trigger name="shipment-delete">
+                    <flux:button variant="danger" icon="trash">
+                        {{ __('Eliminar pedido') }}
+                    </flux:button>
+                </flux:modal.trigger>
+            @endif
+        </div>
+    </div>
 
     @if ($errorMessage)
         <x-backoffice.alert :message="$errorMessage" retry="retry" />
@@ -301,120 +373,248 @@ class extends BackofficeComponent
                 </x-backoffice.empty>
             @endif
         @else
-            {{-- El formulario va en la página, no en un diálogo como en el
-                 listado: aquí el pedido es toda la pantalla, y abrir un modal
-                 encima sería taparla con lo mismo que ya se está mirando. --}}
-            <form
-                wire:submit="save"
-                class="space-y-6 rounded-2xl border border-gris-200 bg-blanco p-6 shadow-sm sm:p-8 dark:border-azul-800 dark:bg-azul-900"
-            >
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <flux:field>
-                        <flux:label>{{ __('Número de guía') }}</flux:label>
-                        <flux:input wire:model="tracking_number" placeholder="TRC-0000000001" />
-                        <flux:error name="tracking_number" />
-                    </flux:field>
+            {{-- Dos columnas (design.md → Detalle de pedido): la ancha con el
+                 progreso y el historial, la estrecha con los datos, los clientes
+                 vinculados y los documentos. --}}
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <div class="space-y-6 lg:col-span-2">
+                    <div class="space-y-6 rounded-xl border border-line bg-surface p-6">
+                        <flux:heading size="lg" class="text-ink">
+                            {{ __('Progreso del envío') }}
+                        </flux:heading>
 
-                    <flux:field>
-                        <flux:label>{{ __('Destinatario') }}</flux:label>
-                        <flux:input wire:model="receiver_name" />
-                        <flux:error name="receiver_name" />
-                    </flux:field>
+                        <ol class="flex items-start">
+                            @foreach ($pasos as $paso)
+                                @php
+                                    $completado = $indiceActual >= $loop->index;
+                                    $esActual = $indiceActual === $loop->index;
 
-                    <flux:field>
-                        <flux:label>{{ __('Origen') }}</flux:label>
-                        <flux:input wire:model="origin" placeholder="Madrid, España" />
-                        <flux:error name="origin" />
-                    </flux:field>
+                                    $nodo = $completado
+                                        ? 'border-primary bg-primary text-on-primary'
+                                        : 'border-line bg-surface text-ink-muted';
 
-                    <flux:field>
-                        <flux:label>{{ __('Destino') }}</flux:label>
-                        <flux:input wire:model="destination" placeholder="Lisboa, Portugal" />
-                        <flux:error name="destination" />
-                    </flux:field>
+                                    $etiqueta = match (true) {
+                                        $esActual => 'text-ink font-semibold',
+                                        $completado => 'text-ink-2',
+                                        default => 'text-ink-muted',
+                                    };
+                                @endphp
 
-                    <flux:field>
-                        <flux:label>{{ __('Entrega estimada') }}</flux:label>
-                        <flux:input type="date" wire:model="estimated_delivery_date" />
-                        <flux:error name="estimated_delivery_date" />
-                    </flux:field>
+                                <li @class(['flex items-start', 'flex-1' => ! $loop->last])>
+                                    <div class="flex w-20 shrink-0 flex-col items-center gap-2 text-center sm:w-24">
+                                        <span
+                                            aria-hidden="true"
+                                            @class([
+                                                'flex size-9 items-center justify-center rounded-full border',
+                                                'ring-4 ring-primary-soft' => $esActual,
+                                                $nodo,
+                                            ])
+                                        >
+                                            <flux:icon :name="$paso['icon']" variant="micro" class="size-4" />
+                                        </span>
 
-                    <flux:field>
-                        <flux:label>{{ __('Estado') }}</flux:label>
-                        <flux:select wire:model="status">
-                            @foreach ($this->statuses() as $option)
-                                <flux:select.option :value="$option['value']">{{ $option['label'] }}</flux:select.option>
+                                        <span @class(['text-xs leading-tight', $etiqueta])>
+                                            {{ $paso['case']->label() }}
+                                        </span>
+                                    </div>
+
+                                    @unless ($loop->last)
+                                        <span
+                                            aria-hidden="true"
+                                            @class([
+                                                'mt-4 h-0.5 flex-1 rounded-full',
+                                                $indiceActual > $loop->index ? 'bg-primary' : 'bg-line',
+                                            ])
+                                        ></span>
+                                    @endunless
+                                </li>
                             @endforeach
-                        </flux:select>
-                        <flux:error name="status" />
-                    </flux:field>
+                        </ol>
 
-                    {{-- Solo el superadministrador elige empresa. Para el resto
-                         sale de su propia cuenta, así que el campo ni aparece. --}}
-                    @if ($this->canChooseCompany())
-                        <flux:field class="sm:col-span-2">
-                            <flux:label>{{ __('Empresa') }}</flux:label>
-                            <flux:select wire:model="company_id">
-                                <flux:select.option value="">{{ __('La empresa de quien registra el pedido') }}</flux:select.option>
-                                @foreach ($companies as $company)
-                                    <flux:select.option :value="$company['id']">{{ $company['name'] }}</flux:select.option>
-                                @endforeach
-                            </flux:select>
-                            <flux:error name="company_id" />
-                        </flux:field>
-                    @endif
+                        @if ($estadoActual === ShipmentStatus::Incidencia)
+                            <div class="flex items-start gap-3 rounded-xl border border-danger/25 bg-danger-soft px-4 py-3">
+                                <flux:icon name="exclamation-triangle" variant="outline" class="mt-0.5 size-5 shrink-0 text-danger" />
+
+                                <flux:text class="text-danger">
+                                    {{ __('Este pedido tiene una incidencia abierta: su recorrido está detenido hasta que se resuelva.') }}
+                                </flux:text>
+                            </div>
+                        @endif
+                    </div>
+
+                    {{-- Cada lista en su propio componente: así editar un evento
+                         o quitar un vínculo repinta solo esa tarjeta, y no el
+                         formulario del pedido, que puede tener cambios a medio
+                         teclear. --}}
+                    <livewire:backoffice.shipment-history-list
+                        :shipment-id="$shipment['id'] ?? null"
+                        :key="'historial-'.($shipment['id'] ?? 0)"
+                    />
+
+                    {{-- El formulario va en la página, no en un diálogo como en el
+                         listado: aquí el pedido es toda la pantalla, y abrir un modal
+                         encima sería taparla con lo mismo que ya se está mirando. Va
+                         al final de la columna del recorrido porque lo primero que se
+                         viene a ver es el estado del envío, no a corregirlo. --}}
+                    <form wire:submit="save" class="space-y-6 rounded-xl border border-line bg-surface p-6">
+                        <div>
+                            <flux:heading size="lg" class="text-ink">{{ __('Editar pedido') }}</flux:heading>
+
+                            <flux:text class="mt-1 text-ink-2">
+                                {{ __('Cambia los datos del pedido. Su historial se gestiona evento a evento, arriba.') }}
+                            </flux:text>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <flux:field>
+                                <flux:label>{{ __('Número de guía') }}</flux:label>
+                                <flux:input wire:model="tracking_number" placeholder="TRC-0000000001" />
+                                <flux:error name="tracking_number" />
+                            </flux:field>
+
+                            <flux:field>
+                                <flux:label>{{ __('Destinatario') }}</flux:label>
+                                <flux:input wire:model="receiver_name" />
+                                <flux:error name="receiver_name" />
+                            </flux:field>
+
+                            <flux:field>
+                                <flux:label>{{ __('Origen') }}</flux:label>
+                                <flux:input wire:model="origin" placeholder="Madrid, España" />
+                                <flux:error name="origin" />
+                            </flux:field>
+
+                            <flux:field>
+                                <flux:label>{{ __('Destino') }}</flux:label>
+                                <flux:input wire:model="destination" placeholder="Lisboa, Portugal" />
+                                <flux:error name="destination" />
+                            </flux:field>
+
+                            <flux:field>
+                                <flux:label>{{ __('Entrega estimada') }}</flux:label>
+                                <flux:input type="date" wire:model="estimated_delivery_date" />
+                                <flux:error name="estimated_delivery_date" />
+                            </flux:field>
+
+                            <flux:field>
+                                <flux:label>{{ __('Estado') }}</flux:label>
+                                <flux:select wire:model="status">
+                                    @foreach ($this->statuses() as $option)
+                                        <flux:select.option :value="$option['value']">{{ $option['label'] }}</flux:select.option>
+                                    @endforeach
+                                </flux:select>
+                                <flux:error name="status" />
+                            </flux:field>
+
+                            {{-- Solo el superadministrador elige empresa. Para el resto
+                                 sale de su propia cuenta, así que el campo ni aparece. --}}
+                            @if ($this->canChooseCompany())
+                                <flux:field class="sm:col-span-2">
+                                    <flux:label>{{ __('Empresa') }}</flux:label>
+                                    <flux:select wire:model="company_id">
+                                        <flux:select.option value="">{{ __('La empresa de quien registra el pedido') }}</flux:select.option>
+                                        @foreach ($companies as $company)
+                                            <flux:select.option :value="$company['id']">{{ $company['name'] }}</flux:select.option>
+                                        @endforeach
+                                    </flux:select>
+                                    <flux:error name="company_id" />
+                                </flux:field>
+                            @endif
+                        </div>
+
+                        <div class="flex flex-wrap items-center justify-end gap-2">
+                            <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="save">
+                                <span wire:loading.remove wire:target="save">{{ __('Guardar cambios') }}</span>
+                                <span wire:loading wire:target="save">{{ __('Guardando...') }}</span>
+                            </flux:button>
+                        </div>
+                    </form>
                 </div>
 
-                {{-- Las tres acciones del pedido juntas y a la derecha. La de
-                     añadir evento no la resuelve esta pantalla: la dispara para
-                     que la atienda la lista del historial, que es quien tiene el
-                     formulario y quien tiene que refrescarse después. --}}
-                <div class="flex flex-wrap items-center justify-end gap-2">
-                    <flux:button icon="plus" wire:click="$dispatch('crear-evento-historial')">
-                        {{ __('Nuevo evento') }}
-                    </flux:button>
+                <div class="space-y-6">
+                    <div class="space-y-4 rounded-xl border border-line bg-surface p-6">
+                        <flux:heading size="lg" class="text-ink">
+                            {{ __('Datos del envío') }}
+                        </flux:heading>
 
-                    <flux:modal.trigger name="shipment-delete">
-                        <flux:button variant="danger" icon="trash">
-                            {{ __('Eliminar pedido') }}
-                        </flux:button>
-                    </flux:modal.trigger>
+                        <dl class="divide-y divide-line text-sm">
+                            <div class="flex items-start justify-between gap-4 py-2.5 first:pt-0">
+                                <dt class="shrink-0 text-ink-muted">{{ __('Guía') }}</dt>
+                                <dd class="min-w-0 truncate text-right font-mono font-medium text-ink">
+                                    {{ $shipment['tracking_number'] ?? '—' }}
+                                </dd>
+                            </div>
 
-                    <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="save">
-                        <span wire:loading.remove wire:target="save">{{ __('Guardar cambios') }}</span>
-                        <span wire:loading wire:target="save">{{ __('Guardando...') }}</span>
-                    </flux:button>
+                            <div class="flex items-center justify-between gap-4 py-2.5">
+                                <dt class="shrink-0 text-ink-muted">{{ __('Estado') }}</dt>
+                                <dd><x-backoffice.status-badge :status="$shipment['status'] ?? null" /></dd>
+                            </div>
+
+                            <div class="flex items-start justify-between gap-4 py-2.5">
+                                <dt class="shrink-0 text-ink-muted">{{ __('Destinatario') }}</dt>
+                                <dd class="min-w-0 text-right font-medium break-words text-ink">
+                                    {{ $shipment['receiver_name'] ?? '—' }}
+                                </dd>
+                            </div>
+
+                            <div class="flex items-start justify-between gap-4 py-2.5">
+                                <dt class="shrink-0 text-ink-muted">{{ __('Origen') }}</dt>
+                                <dd class="min-w-0 text-right font-medium break-words text-ink">
+                                    {{ $shipment['origin'] ?? '—' }}
+                                </dd>
+                            </div>
+
+                            <div class="flex items-start justify-between gap-4 py-2.5">
+                                <dt class="shrink-0 text-ink-muted">{{ __('Destino') }}</dt>
+                                <dd class="min-w-0 text-right font-medium break-words text-ink">
+                                    {{ $shipment['destination'] ?? '—' }}
+                                </dd>
+                            </div>
+
+                            <div class="flex items-start justify-between gap-4 py-2.5">
+                                <dt class="shrink-0 text-ink-muted">{{ __('Entrega estimada') }}</dt>
+                                <dd class="min-w-0 text-right font-medium text-ink">
+                                    {{ $fecha($shipment['estimated_delivery_date'] ?? null) }}
+                                </dd>
+                            </div>
+
+                            @if ($empresa)
+                                <div class="flex items-start justify-between gap-4 py-2.5">
+                                    <dt class="shrink-0 text-ink-muted">{{ __('Empresa') }}</dt>
+                                    <dd class="min-w-0 text-right font-medium break-words text-ink">{{ $empresa }}</dd>
+                                </div>
+                            @endif
+
+                            <div class="flex items-start justify-between gap-4 py-2.5">
+                                <dt class="shrink-0 text-ink-muted">{{ __('Registrado') }}</dt>
+                                <dd class="min-w-0 text-right font-medium text-ink">
+                                    {{ $fecha($shipment['created_at'] ?? null, true) }}
+                                </dd>
+                            </div>
+
+                            <div class="flex items-start justify-between gap-4 py-2.5 last:pb-0">
+                                <dt class="shrink-0 text-ink-muted">{{ __('Última actualización') }}</dt>
+                                <dd class="min-w-0 text-right font-medium text-ink">
+                                    {{ $fecha($shipment['updated_at'] ?? null, true) }}
+                                </dd>
+                            </div>
+                        </dl>
+                    </div>
+
+                    <livewire:backoffice.shipment-user-list
+                        :tracking-number="$editing"
+                        :key="'vinculados-'.$editing"
+                    />
+
+                    <livewire:backoffice.shipment-document-list
+                        :shipment-id="$shipment['id'] ?? null"
+                        :key="'documentos-'.($shipment['id'] ?? 0)"
+                    />
                 </div>
-            </form>
+            </div>
 
         @endif
     </x-backoffice.busy>
-
-    {{-- Las listas van fuera del bloque de arriba y cada una en su propio
-         componente: así editar un evento o quitar un vínculo repinta solo esa
-         columna, y no el formulario del pedido, que puede tener cambios a medio
-         teclear. --}}
-    @if (! empty($shipment))
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <livewire:backoffice.shipment-history-list
-                :shipment-id="$shipment['id'] ?? null"
-                :key="'historial-'.($shipment['id'] ?? 0)"
-            />
-
-            <livewire:backoffice.shipment-user-list
-                :tracking-number="$editing"
-                :key="'vinculados-'.$editing"
-            />
-
-            {{-- Dentro de la misma rejilla que las otras dos, no a ancho
-                 completo: una fila de documentos con nombre, estado y
-                 descarga no necesita todo el ancho de la pantalla. --}}
-            <livewire:backoffice.shipment-document-list
-                :shipment-id="$shipment['id'] ?? null"
-                :key="'documentos-'.($shipment['id'] ?? 0)"
-            />
-        </div>
-    @endif
 
     <x-backoffice.modal
         name="shipment-delete"

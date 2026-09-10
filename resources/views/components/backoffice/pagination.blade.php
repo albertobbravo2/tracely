@@ -14,8 +14,8 @@
 @endphp
 
 @if ($total > 0)
-    <div class="flex flex-col gap-3 border-t border-gris-200 pt-4 sm:flex-row sm:items-center sm:justify-between dark:border-azul-800">
-        <flux:text class="text-gris-600 dark:text-azul-100">
+    <div class="flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <flux:text class="text-ink-muted">
             @if ($from && $to)
                 {{ __(':from–:to de :total', ['from' => $from, 'to' => $to, 'total' => $total]) }}
             @else
@@ -39,7 +39,7 @@
                 {{ __('Anterior') }}
             </flux:button>
 
-            <flux:text class="px-1 whitespace-nowrap text-gris-600 dark:text-azul-100">
+            <flux:text class="px-1 font-medium whitespace-nowrap text-ink-2">
                 {{ __(':current / :last', ['current' => $current, 'last' => $last]) }}
             </flux:text>
 

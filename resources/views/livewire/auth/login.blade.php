@@ -48,7 +48,7 @@
                 <flux:button
                     variant="primary"
                     type="submit"
-                    class="w-full [--color-accent-foreground:var(--color-white)] [--color-accent:var(--color-brand-navy)]"
+                    class="w-full shadow-elev"
                     data-test="login-button"
                 >
                     {{ __('Iniciar sesión') }}
@@ -56,7 +56,7 @@
             </div>
         </form>
 
-        <div class="space-x-1 text-sm text-center rtl:space-x-reverse text-gris-600 dark:text-azul-100">
+        <div class="space-x-1 text-sm text-center rtl:space-x-reverse text-ink-2">
             <span>{{ __('¿No tienes cuenta?') }}</span>
             <flux:link :href="route('register')" wire:navigate>{{ __('Regístrate') }}</flux:link>
         </div>

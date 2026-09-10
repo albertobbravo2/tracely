@@ -243,7 +243,7 @@ class CompanyFormTest extends TestCase
             ->assertSee('Inactiva')
             // El distintivo verde es el de lo confirmado; el gris, el de lo
             // neutro. Si las dos filas salieran iguales, la columna sobraría.
-            ->assertSeeHtml('!bg-ok-fondo')
-            ->assertSeeHtml('!bg-gris-050');
+            ->assertSeeHtml('!bg-ok-soft')
+            ->assertSeeHtml('!bg-idle-soft');
     }
 }

@@ -1,4 +1,6 @@
-<flux:dropdown position="bottom" align="start">
+{{-- `$attributes` va al desplegable para que quien lo coloque pueda darle
+     ancho o esconderlo por breakpoint; sin esto la clase se perdía. --}}
+<flux:dropdown position="bottom" align="start" {{ $attributes }}>
     
     <flux:sidebar.profile
         :name="auth()->user()->name"
