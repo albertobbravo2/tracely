@@ -114,7 +114,10 @@ watching it.
   guard without a token; external/token clients authenticate via `Authorization: Bearer`.
 - `shipments.show` (public tracking lookup) sits outside the `auth:sanctum` group and branches
   its response on whether a Sanctum user is present: unauthenticated requests get a whitelisted
-  subset of fields, authenticated requests get the full model plus `histories`. It's also the
+  subset of fields, authenticated requests get the full model plus `histories` and `documents`.
+  Note the split between *listing* and *downloading* a document: any authenticated user sees the
+  attachment list here, but `documents.download` stays behind `permission:ver documento`, so the
+  public tracking card only renders the download button for backoffice roles. It's also the
   only route with a dedicated rate limiter (`show-shipment`, 3 req/s keyed by user id or IP —
   see `AppServiceProvider::configureRateLimiting()`).
 
@@ -158,7 +161,9 @@ Lo que se cachea, y cuándo, lo decide [ShipmentObserver](app/Observers/Shipment
 `status` `entregado` — es el único estado que ya no cambia — bajo la clave
 `ShipmentObserver::cacheKey($tracking_number)`. Si el estado deja de ser `entregado`, o el
 envío se borra, el Observer limpia esa entrada. El payload cacheado es el envío completo
-(incluye `histories`); el controlador aplica el mismo recorte público/privado sobre el dato
+(incluye `histories` y `documents`, exactamente lo mismo que devuelve la rama autenticada del
+controlador: si aquí faltara algo, la respuesta dependería de si hubo hit de caché o no); el
+controlador aplica el mismo recorte público/privado sobre el dato
 cacheado que ya aplicaba sobre el dato de base de datos, así que un hit de caché nunca expone
 a un usuario sin sesión más de lo que vería sin caché.
 

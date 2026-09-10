@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Enums\ShipmentStatus;
 use App\Models\Company;
+use App\Models\Document;
 use App\Models\Shipment;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -177,5 +178,31 @@ class ShipmentTest extends TestCase
 
         $this->assertSame(0, Shipment::count());
         $this->assertDatabaseCount('shipment_histories', 0);
+    }
+
+    public function test_la_consulta_publica_no_expone_los_documentos(): void
+    {
+        $shipment = Shipment::factory()->create();
+        Document::factory()->for($shipment)->create();
+
+        $this->getJson(route('shipments.show', ['shipment' => $shipment->tracking_number]))
+            ->assertOk()
+            ->assertJsonMissing(['documents'])
+            ->assertJsonMissing(['histories']);
+    }
+
+    public function test_un_usuario_autenticado_recibe_los_documentos_del_envio(): void
+    {
+        $shipment = Shipment::factory()->create();
+        $documento = Document::factory()->for($shipment)->create();
+
+        $this->actingAs(User::factory()->create())
+            ->getJson(route('shipments.show', ['shipment' => $shipment->tracking_number]))
+            ->assertOk()
+            ->assertJsonCount(1, 'documents')
+            ->assertJsonPath('documents.0.document_name', $documento->document_name)
+            // `file_path` es una ruta interna del disco: lo que se expone es la
+            // URL de descarga, que sigue detrás de `permission:ver documento`.
+            ->assertJsonMissing(['file_path']);
     }
 }

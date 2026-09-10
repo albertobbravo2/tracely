@@ -68,9 +68,16 @@ class ShipmentObserver
     private function remember(Shipment $shipment): void
     {
         try {
+            // Se cachea lo mismo que devuelve la rama autenticada de
+            // `ShipmentController::show()`, documentos incluidos: si aquí
+            // faltara algo, un envío entregado lo perdería al servirse desde
+            // caché y la respuesta dependería de si hubo hit o no.
             Cache::store('redis')->put(
                 self::cacheKey($shipment->tracking_number),
-                $shipment->load(['histories' => fn ($query) => $query->orderBy('recorded_at')])->toArray(),
+                $shipment->load([
+                    'histories' => fn ($query) => $query->orderBy('recorded_at'),
+                    'documents' => fn ($query) => $query->orderBy('id'),
+                ])->toArray(),
                 now()->addDays(self::CACHE_TTL_DAYS),
             );
         } catch (\Throwable $e) {

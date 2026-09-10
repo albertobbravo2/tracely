@@ -122,8 +122,16 @@ class ShipmentController extends Controller
             ]));
         }
 
+        // Los documentos viajan con el mismo criterio que el histórico: solo en
+        // la rama autenticada. La rama pública de arriba es una lista blanca de
+        // campos, así que añadirlos aquí no los expone a quien no tiene sesión.
+        // Lo que sí sigue protegido por `permission:ver documento` es la
+        // descarga (`documents.download`): esto solo enseña qué hay adjunto.
         return response()->json(
-            $model->load(['histories' => fn ($query) => $query->orderBy('recorded_at')])
+            $model->load([
+                'histories' => fn ($query) => $query->orderBy('recorded_at'),
+                'documents' => fn ($query) => $query->orderBy('id'),
+            ])
         );
     }
 

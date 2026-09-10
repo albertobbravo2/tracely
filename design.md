@@ -135,7 +135,10 @@ icono y texto en `primary` a peso 600. A la derecha del grupo, el conmutador de 
 252 px de ancho, fondo `surface`, borde derecho de 1 px, padding `[20, 16]`, disposición
 vertical con separación de 22 px. De arriba abajo:
 
-1. Marca (igual que la del navbar, wordmark a 18 px).
+1. Marca (igual que la del navbar, wordmark a 18 px). Debajo del wordmark, en
+   11.5 px `ink-muted`, el nombre de la empresa de quien mira — es el recorte con el que va
+   a ver todos los listados. Solo para `agente` y `administrador`: el superadministrador está
+   por encima de las empresas y no tiene ninguna que enseñar.
 2. `GENERAL` — Pedidos, Historial.
 3. `GESTIÓN` — Documentos, Usuarios, Compañías (Compañías solo para superadministrador).
 4. **Separador horizontal de 1 px.**

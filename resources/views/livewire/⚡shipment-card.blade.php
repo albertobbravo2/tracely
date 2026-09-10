@@ -45,7 +45,11 @@ new class extends Component
     public function mount(?bool $linked = null): void
     {
         $this->linked = $linked ?? $this->isLinked();
-        $this->documents = $this->loadDocuments();
+
+        // `shipments.show` ya trae los documentos en su rama autenticada, igual
+        // que el histórico, así que con sesión no hace falta pedirlos aparte.
+        // El respaldo es para "Mis pedidos", que se alimenta de otro endpoint.
+        $this->documents = $this->documentsFromShipment() ?? $this->loadDocuments();
     }
 
     /**
@@ -180,7 +184,15 @@ new class extends Component
      * monta ⚡searchfield para un invitado, y ahí no hay sesión sobre la que
      * evaluar el permiso.
      */
-    private function canViewDocuments(): bool
+    /**
+     * ¿Quien mira puede además descargarlos?
+     *
+     * Ver la lista y bajarse el fichero son dos cosas distintas: la descarga
+     * (`documents.download`) sigue detrás de `permission:ver documento`, que
+     * solo tienen los roles del backoffice. A un cliente se le enseña qué hay
+     * adjunto, pero el botón no se pinta porque le respondería un 403.
+     */
+    public function canViewDocuments(): bool
     {
         return auth()->user()?->hasAnyRole(['agente', 'administrador', 'superadministrador']) ?? false;
     }
@@ -196,6 +208,26 @@ new class extends Component
      *
      * @return list<array<string, mixed>>
      */
+    /**
+     * Documentos que ya vienen dentro del envío.
+     *
+     * Devuelve null —y no un array vacío— cuando la clave no está, para poder
+     * distinguir "esta respuesta no los trae" de "los trae y no hay ninguno".
+     * Solo en el primer caso tiene sentido salir a preguntarlos.
+     *
+     * @return list<array<string, mixed>>|null
+     */
+    private function documentsFromShipment(): ?array
+    {
+        $documents = $this->shipment['documents'] ?? null;
+
+        if (! is_array($documents)) {
+            return null;
+        }
+
+        return array_values(array_filter($documents, is_array(...)));
+    }
+
     private function loadDocuments(): array
     {
         $shipmentId = $this->shipment['id'] ?? null;
@@ -309,8 +341,17 @@ new class extends Component
 
     {{-- Metadatos como lista etiqueta/valor. `receiver_name` solo llega en la
          respuesta autenticada de la API, así que su columna aparece o no según
-         quién mire. --}}
-    <dl class="mt-6 grid grid-cols-1 gap-x-6 gap-y-4 border-t border-line pt-6 sm:grid-cols-2 lg:grid-cols-4">
+         quién mire, y el número de columnas se ajusta a los campos que hay: con
+         cuatro fijas, sin destinatario quedaba un hueco y los otros tres se
+         estrechaban de más. Las dos combinaciones van escritas enteras porque
+         el JIT de Tailwind no ve las clases que se arman por concatenación. --}}
+    @php
+        $metaColumns = ($shipment['receiver_name'] ?? null)
+            ? 'sm:grid-cols-2 lg:grid-cols-4'
+            : 'sm:grid-cols-3';
+    @endphp
+
+    <dl class="mt-6 grid grid-cols-1 gap-x-6 gap-y-4 border-t border-line pt-6 {{ $metaColumns }}">
         <div>
             <dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">{{ __('Origen') }}</dt>
             <dd class="mt-1 font-semibold text-ink">{{ $shipment['origin'] ?? '—' }}</dd>
@@ -403,9 +444,10 @@ new class extends Component
         </div>
     @endif
 
-    {{-- `$documents` ya sale vacío si quien mira no tiene permiso para verlos
-         —lo resuelve `loadDocuments()`—, así que aquí solo queda pintar lo que
-         haya, igual que con el histórico. --}}
+    {{-- Los documentos llegan con la respuesta autenticada del envío, igual que
+         el histórico, así que la sección aparece con sesión y solo si hay algo
+         adjunto. El botón de descarga es aparte: ver la lista no da permiso
+         para bajarse el fichero. --}}
     @if ($documents)
         <div class="mt-6 space-y-3 border-t border-line pt-6">
             <flux:text class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">
@@ -429,17 +471,19 @@ new class extends Component
                             </div>
                         </div>
 
-                        {{-- Relativa y armada aquí, no con el `download_url` que
-                             devuelve la API: esa URL sale con el host de dentro
-                             del contenedor (ver la nota en ⚡documents.blade.php). --}}
-                        <flux:button
-                            size="sm"
-                            variant="ghost"
-                            icon="arrow-down-tray"
-                            class="shrink-0"
-                            :label="__('Descargar documento')"
-                            :href="route('documents.download', ['document' => $document['id']], absolute: false)"
-                        />
+                        @if ($this->canViewDocuments())
+                            {{-- Relativa y armada aquí, no con el `download_url` que
+                                 devuelve la API: esa URL sale con el host de dentro
+                                 del contenedor (ver la nota en ⚡documents.blade.php). --}}
+                            <flux:button
+                                size="sm"
+                                variant="ghost"
+                                icon="arrow-down-tray"
+                                class="shrink-0"
+                                :label="__('Descargar documento')"
+                                :href="route('documents.download', ['document' => $document['id']], absolute: false)"
+                            />
+                        @endif
                     </li>
                 @endforeach
             </ul>
