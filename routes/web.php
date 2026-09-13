@@ -4,6 +4,13 @@ use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'home')->name('home');
 
+// Páginas legales: texto estático y público, sin sesión ni Livewire de por
+// medio, así que van como `Route::view` igual que la home.
+Route::view('aviso-legal', 'legal.aviso-legal')->name('legal.aviso');
+Route::view('privacidad', 'legal.privacidad')->name('legal.privacidad');
+Route::view('cookies', 'legal.cookies')->name('legal.cookies');
+Route::view('terminos', 'legal.terminos')->name('legal.terminos');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::view('dashboard', 'dashboard')->name('dashboard');
 });

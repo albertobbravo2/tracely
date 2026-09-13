@@ -22,6 +22,12 @@ class CreateNewUser implements CreatesNewUsers
         Validator::make($input, [
             ...$this->profileRules(),
             'password' => $this->passwordRules(),
+            // El checkbox de la vista es solo la primera barrera: la
+            // aceptación se exige también aquí, que es por donde entra
+            // cualquier alta.
+            'terms' => ['accepted'],
+        ], [
+            'terms.accepted' => __('Debes aceptar los términos y condiciones y la política de privacidad.'),
         ])->validate();
 
         return User::create([

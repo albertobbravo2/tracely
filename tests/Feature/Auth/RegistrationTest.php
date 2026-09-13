@@ -31,11 +31,27 @@ class RegistrationTest extends TestCase
             'email' => 'test@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
+            'terms' => '1',
         ]);
 
         $response->assertSessionHasNoErrors()
             ->assertRedirect(route('dashboard', absolute: false));
 
         $this->assertAuthenticated();
+    }
+
+    public function test_el_registro_exige_aceptar_los_terminos(): void
+    {
+        $response = $this->post(route('register.store'), [
+            'name' => 'John Doe',
+            'email' => 'test@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
+
+        $response->assertSessionHasErrors('terms');
+
+        $this->assertGuest();
+        $this->assertDatabaseMissing('users', ['email' => 'test@example.com']);
     }
 }

@@ -69,6 +69,27 @@
                 viewable
             />
 
+            {{-- Consentimiento: el campo va como `flux:field` explícito, y no
+                 con `:label` en el checkbox, porque la etiqueta lleva enlaces
+                 dentro. Se abren en pestaña nueva para no perder el formulario. --}}
+            <flux:field variant="inline">
+                <flux:checkbox name="terms" value="1" :checked="old('terms')" required />
+
+                {{-- Todo el texto va dentro de un solo `<span>`: `flux:label` es
+                     un `inline-flex`, así que sin envolverlo cada trozo de la
+                     frase se convertiría en una columna suya. --}}
+                <flux:label class="!text-sm !font-normal !text-ink-2">
+                    <span>
+                        {{ __('He leído y acepto los') }}
+                        <flux:link :href="route('legal.terminos')" target="_blank">{{ __('términos y condiciones') }}</flux:link>
+                        {{ __('y la') }}
+                        <flux:link :href="route('legal.privacidad')" target="_blank">{{ __('política de privacidad') }}</flux:link>.
+                    </span>
+                </flux:label>
+
+                <flux:error name="terms" />
+            </flux:field>
+
             <flux:button
                 type="submit"
                 variant="primary"
