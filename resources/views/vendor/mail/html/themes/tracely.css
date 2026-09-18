@@ -1,0 +1,363 @@
+/* Tema de correo de Tracely — la traducción a HTML-email del sistema de design.md.
+
+   Aquí los hex sí van a mano, y es la única excepción a la regla de design.md:
+   un correo no pasa por Tailwind ni admite `var()` (Gmail las descarta), así que
+   cada token está copiado literal con su nombre al lado. Si cambias un valor en
+   el bloque `@theme` de `resources/css/app.css`, cámbialo también aquí.
+
+   Solo modo claro: el layout declara `color-scheme: light` igual que la
+   plantilla de Laravel. La paleta oscura de design.md no se usa porque los
+   estilos van en línea (los inserta CssToInlineStyles) y una media query no
+   puede ganarles sin llenar el fichero de `!important`. */
+
+/* Base */
+
+body,
+body *:not(html):not(style):not(br):not(tr):not(code) {
+    box-sizing: border-box;
+    /* Instrument Sans solo llega a los clientes que aceptan fuentes remotas
+       (Apple Mail, iOS); el resto cae a la pila del sistema. */
+    font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+    position: relative;
+}
+
+body {
+    -webkit-text-size-adjust: none;
+    background-color: #F5F7FC; /* canvas */
+    color: #3D4863; /* ink-2 */
+    height: 100%;
+    line-height: 1.55;
+    margin: 0;
+    padding: 0;
+    width: 100% !important;
+}
+
+p,
+ul,
+ol,
+blockquote {
+    line-height: 1.55;
+    text-align: start;
+}
+
+a {
+    color: #2549E6; /* primary */
+}
+
+a img {
+    border: none;
+}
+
+/* Typography */
+
+h1 {
+    color: #0C1220; /* ink */
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+    margin-top: 0;
+    margin-bottom: 16px;
+    text-align: start;
+}
+
+h2 {
+    color: #0C1220; /* ink */
+    font-size: 17px;
+    font-weight: 600;
+    margin-top: 0;
+    text-align: start;
+}
+
+h3 {
+    color: #0C1220; /* ink */
+    font-size: 15px;
+    font-weight: 600;
+    margin-top: 0;
+    text-align: start;
+}
+
+p {
+    color: #3D4863; /* ink-2 */
+    /* 15 px en vez de los 14.5 de pantalla: en un cliente de correo el lector no
+       controla el zoom y el cuerpo tiene que aguantar solo. */
+    font-size: 15px;
+    line-height: 1.55;
+    margin-top: 0;
+    margin-bottom: 16px;
+    text-align: left;
+}
+
+p.sub {
+    font-size: 13px;
+}
+
+img {
+    max-width: 100%;
+}
+
+/* Layout */
+
+.wrapper {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    background-color: #F5F7FC; /* canvas */
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.content {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+/* Header — marca de design.md: cuadro de 32 px radio 9 en `primary` + wordmark */
+
+.header {
+    padding: 32px 0 24px;
+    text-align: center;
+}
+
+.header a {
+    text-decoration: none;
+}
+
+.brand-mark {
+    background-color: #2549E6; /* primary */
+    border-radius: 9px;
+    height: 32px;
+    line-height: 0;
+    text-align: center;
+    vertical-align: middle;
+    width: 32px;
+}
+
+.brand-name {
+    color: #0C1220; /* ink */
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+    padding-left: 10px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+/* Body */
+
+.body {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    background-color: #F5F7FC; /* canvas */
+    border-bottom: 0;
+    border-top: 0;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.inner-body {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 570px;
+    background-color: #FFFFFF; /* surface */
+    border-color: #E1E7F1; /* line */
+    border-radius: 14px;
+    border-style: solid;
+    border-width: 1px;
+    /* Sombra de tarjeta (`--shadow-modal`). La ignoran casi todos los clientes;
+       el borde de 1 px es lo que sostiene la tarjeta. */
+    box-shadow: 0 8px 24px rgba(12, 18, 32, 0.08);
+    margin: 0 auto;
+    padding: 0;
+    width: 570px;
+}
+
+.inner-body a {
+    word-break: break-all;
+}
+
+/* Franja de marca: el degradado `primary` → `primary-hover` del panel de
+   autenticación, reducido a 4 px sobre la tarjeta. Quien no entienda el
+   degradado ve el `primary` sólido. */
+
+.card-accent {
+    background-color: #2549E6; /* primary */
+    background-image: linear-gradient(to right, #2549E6, #1B39C4); /* primary → primary-hover */
+    border-radius: 13px 13px 0 0;
+    font-size: 0;
+    height: 4px;
+    line-height: 0;
+    padding: 0;
+}
+
+.content-cell {
+    max-width: 100vw;
+    padding: 32px;
+}
+
+/* Subcopy — el enlace en texto plano, por si el botón no se puede pulsar */
+
+.subcopy {
+    border-top: 1px solid #E1E7F1; /* line */
+    margin-top: 28px;
+    padding-top: 24px;
+}
+
+.subcopy p {
+    color: #6B7793; /* ink-muted */
+    font-size: 13px;
+    margin-bottom: 0;
+}
+
+.subcopy a {
+    color: #2549E6; /* primary */
+}
+
+/* Footer */
+
+.footer {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 570px;
+    margin: 0 auto;
+    padding: 24px 0 32px;
+    text-align: center;
+    width: 570px;
+}
+
+.footer p {
+    color: #6B7793; /* ink-muted */
+    font-size: 12px;
+    margin-bottom: 4px;
+    text-align: center;
+}
+
+.footer a {
+    color: #6B7793; /* ink-muted */
+    text-decoration: underline;
+}
+
+/* Tables — cabecera sobre `surface-2`, filas separadas por `line` (design.md) */
+
+.table table {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    margin: 24px auto;
+    width: 100%;
+}
+
+.table th {
+    background-color: #EEF2F9; /* surface-2 */
+    color: #6B7793; /* ink-muted */
+    font-size: 12px;
+    font-weight: 600;
+    margin: 0;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+.table td {
+    border-bottom: 1px solid #E1E7F1; /* line */
+    color: #3D4863; /* ink-2 */
+    font-size: 14px;
+    line-height: 20px;
+    margin: 0;
+    padding: 10px 12px;
+}
+
+/* Buttons — primario de design.md: radio 11, padding [14, 18], peso 600.
+   El padding se hace con bordes del mismo color porque Outlook ignora el
+   `padding` de un enlace; es el truco que ya usaba la plantilla de Laravel. */
+
+.action {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    margin: 28px auto;
+    padding: 0;
+    text-align: center;
+    width: 100%;
+    float: unset;
+}
+
+.button {
+    -webkit-text-size-adjust: none;
+    border-radius: 11px;
+    color: #FFFFFF; /* on-primary */
+    display: inline-block;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1;
+    overflow: hidden;
+    text-decoration: none;
+}
+
+.button-blue,
+.button-primary {
+    background-color: #2549E6; /* primary */
+    border-bottom: 14px solid #2549E6;
+    border-left: 18px solid #2549E6;
+    border-right: 18px solid #2549E6;
+    border-top: 14px solid #2549E6;
+}
+
+.button-green,
+.button-success {
+    background-color: #047857; /* ok */
+    border-bottom: 14px solid #047857;
+    border-left: 18px solid #047857;
+    border-right: 18px solid #047857;
+    border-top: 14px solid #047857;
+}
+
+.button-red,
+.button-error {
+    background-color: #C81E37; /* danger */
+    border-bottom: 14px solid #C81E37;
+    border-left: 18px solid #C81E37;
+    border-right: 18px solid #C81E37;
+    border-top: 14px solid #C81E37;
+}
+
+/* Panels */
+
+.panel {
+    border-radius: 10px;
+    margin: 20px 0;
+    overflow: hidden;
+}
+
+.panel-content {
+    background-color: #EEF2F9; /* surface-2 */
+    border-radius: 10px;
+    color: #3D4863; /* ink-2 */
+    padding: 16px;
+}
+
+.panel-content p {
+    color: #3D4863; /* ink-2 */
+    font-size: 14px;
+}
+
+.panel-item {
+    padding: 0;
+}
+
+.panel-item p:last-of-type {
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+/* Utilities */
+
+.break-all {
+    word-break: break-all;
+}

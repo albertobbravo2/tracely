@@ -26,8 +26,8 @@
                         {{ __('Panel') }}
                     </x-nav-pill>
 
-                    {{-- Los mismos roles que protegen el bloque `backoffice.` en routes/web.php. --}}
-                    @if (auth()->user()->hasAnyRole(['agente', 'administrador', 'superadministrador']))
+                    {{-- Mismas condiciones que protegen el bloque `backoffice.` en routes/web.php. --}}
+                    @if (auth()->user()->canAccessBackoffice())
                         <x-nav-pill
                             icon="briefcase"
                             :href="route('backoffice.index')"

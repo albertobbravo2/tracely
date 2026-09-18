@@ -109,6 +109,16 @@ watching it.
   (with a comment pointing back at the route). There are no Policy classes yet — if you need
   resource-based authorization (e.g. "only the sender can edit their own shipment") rather than
   flat permission checks, that's the gap to fill.
+- Una empresa desactivada (`companies.is_active = false`) deja a toda su plantilla fuera del
+  backoffice: el middleware `company.active`
+  ([EnsureCompanyIsActive](app/Http/Middleware/EnsureCompanyIsActive.php)) cuelga del bloque
+  `backoffice.` de `routes/web.php` y del grupo `auth:sanctum` de `routes/api.php`, y responde
+  403 sin tocar roles ni permisos. Quedan fuera de la regla las cuentas sin `company_id` (los
+  clientes finales, que se registran por la web y nunca llevan empresa), el
+  `superadministrador` —es el único rol que puede reactivar una empresa, así que bloquearlo
+  sería un callejón sin salida— y la consulta pública de seguimiento, que vive fuera del grupo
+  autenticado. En vistas, usa `User::canAccessBackoffice()` (rol de empleado + empresa activa)
+  en vez de repetir el `hasAnyRole([...])`.
 - API auth is Sanctum, mounted with `statefulApi()` (in [bootstrap/app.php](bootstrap/app.php))
   so same-origin requests carrying the app's own session cookie are recognized by the `sanctum`
   guard without a token; external/token clients authenticate via `Authorization: Bearer`.

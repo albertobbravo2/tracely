@@ -78,4 +78,32 @@ class PasswordResetTest extends TestCase
             return true;
         });
     }
+
+    public function test_reset_password_email_uses_the_tracely_template(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create(['name' => 'Ana Gómez']);
+
+        $this->post(route('password.request'), ['email' => $user->email]);
+
+        Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user) {
+            $mail = $notification->toMail($user);
+            $html = (string) $mail->render();
+
+            $this->assertSame('Restablece tu contraseña de Tracely', $mail->subject);
+
+            // El texto es el nuestro, en español, y no el del framework.
+            $this->assertStringContainsString('Hola, Ana Gómez', $html);
+            $this->assertStringContainsString('Crear una contraseña nueva', $html);
+            $this->assertStringContainsString('el equipo de Tracely', $html);
+
+            // Y la maqueta es la de Tracely: marca propia y color `primary`
+            // del tema `tracely` ya en línea (ver config/mail.php).
+            $this->assertStringNotContainsString('Laravel', $html);
+            $this->assertStringContainsString('#2549E6', $html);
+
+            return true;
+        });
+    }
 }

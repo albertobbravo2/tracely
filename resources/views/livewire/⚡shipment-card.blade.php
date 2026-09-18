@@ -190,11 +190,14 @@ new class extends Component
      * Ver la lista y bajarse el fichero son dos cosas distintas: la descarga
      * (`documents.download`) sigue detrás de `permission:ver documento`, que
      * solo tienen los roles del backoffice. A un cliente se le enseña qué hay
-     * adjunto, pero el botón no se pinta porque le respondería un 403.
+     * adjunto, pero el botón no se pinta porque le respondería un 403. Lo
+     * mismo vale para un empleado cuya empresa esté desactivada: el grupo
+     * autenticado de la API lleva `company.active`, así que la descarga
+     * también le respondería 403.
      */
     public function canViewDocuments(): bool
     {
-        return auth()->user()?->hasAnyRole(['agente', 'administrador', 'superadministrador']) ?? false;
+        return auth()->user()?->canAccessBackoffice() ?? false;
     }
 
     /**

@@ -19,7 +19,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // empresas. Un único `role:` para todo el bloque; la discriminación fina por
 // sección la sigue haciendo la API, que es contra la que van estas pantallas
 // (cada endpoint lleva su propio `permission:`, ver routes/api.php).
-Route::middleware(['auth', 'role:agente|administrador|superadministrador'])
+// `company.active` añade una segunda condición al rol: si la empresa del
+// usuario está desactivada no entra, aunque conserve el rol.
+Route::middleware(['auth', 'role:agente|administrador|superadministrador', 'company.active'])
     ->prefix('backoffice')
     ->name('backoffice.')
     ->group(function () {
