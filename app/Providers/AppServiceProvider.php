@@ -39,12 +39,35 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function configureRateLimiting(): void
     {
-        // Ojo: en `shipments.show` la IP es siempre 127.0.0.1, porque quien llama
-        // a la API es el propio servidor desde el componente del buscador. Por eso
-        // el identificador va primero por usuario: la IP solo discrimina si algún
-        // día llama un cliente externo.
         RateLimiter::for('show-shipment', fn (Request $request) => Limit::perSecond(3)
-            ->by($request->user()?->id ?? $request->ip()));
+            ->by($this->showShipmentThrottleKey($request)));
+    }
+
+    /**
+     * Who a `shipments.show` request counts against.
+     *
+     * Con sesión, el usuario. Sin sesión, la IP del visitante; pero quien llama
+     * de verdad es casi siempre el buscador desde el propio servidor, así que
+     * `$request->ip()` sería la del servidor y todos los anónimos compartirían
+     * un único cupo. Por eso el buscador manda la IP real en una cabecera, y
+     * solo se acepta si va firmada con `services.internal_api.secret`: sin la
+     * firma, cualquiera podría inventarse una IP por petición y saltarse el
+     * límite.
+     */
+    protected function showShipmentThrottleKey(Request $request): string
+    {
+        if ($request->user() !== null) {
+            return 'user:'.$request->user()->getAuthIdentifier();
+        }
+
+        $visitorIp = $request->header('X-Tracely-Visitor-Ip');
+        $signature = (string) $request->header('X-Tracely-Internal');
+
+        if (is_string($visitorIp) && hash_equals((string) config('services.internal_api.secret'), $signature)) {
+            return 'ip:'.$visitorIp;
+        }
+
+        return 'ip:'.$request->ip();
     }
 
     /**

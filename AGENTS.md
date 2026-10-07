@@ -129,7 +129,12 @@ watching it.
   attachment list here, but `documents.download` stays behind `permission:ver documento`, so the
   public tracking card only renders the download button for backoffice roles. It's also the
   only route with a dedicated rate limiter (`show-shipment`, 3 req/s keyed by user id or IP —
-  see `AppServiceProvider::configureRateLimiting()`).
+  see `AppServiceProvider::configureRateLimiting()`). Because the searchfield calls the API
+  server-to-server, the request IP is the server's; the component forwards the visitor's real
+  IP in `X-Tracely-Visitor-Ip`, which the limiter only honours when `X-Tracely-Internal`
+  carries `services.internal_api.secret` (an HMAC of `APP_KEY`). Any other component that
+  calls this route on behalf of anonymous visitors must send both headers, or every guest
+  ends up sharing one bucket.
 
 ### API conventions
 
