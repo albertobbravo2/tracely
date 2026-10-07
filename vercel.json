@@ -1,10 +1,10 @@
 {
     "version": 2,
-    "images": {
-        "sizes":,
-        "domains": [],
-        "minimumCacheTTL": 60,
-        "formats": ["image/avif", "image/webp"]
+    "framework": "vite",
+    "functions": {
+        "api/index.php": {
+            "runtime": "vercel-php@0.7.3"
+        }
     },
     "routes": [
         {
