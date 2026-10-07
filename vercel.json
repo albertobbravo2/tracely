@@ -1,0 +1,19 @@
+{
+    "version": 2,
+    "images": {
+        "sizes":,
+        "domains": [],
+        "minimumCacheTTL": 60,
+        "formats": ["image/avif", "image/webp"]
+    },
+    "routes": [
+        {
+            "src": "/build/(.*)",
+            "dest": "/public/build/$1"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/api/index.php"
+        }
+    ]
+}
