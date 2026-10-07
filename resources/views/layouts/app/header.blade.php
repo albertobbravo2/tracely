@@ -43,7 +43,8 @@
                 <x-appearance-toggle class="ms-1.5" />
 
                 @auth
-                    <x-desktop-user-menu class="ms-1.5" />
+                    {{-- En móvil el navbar no tiene sitio para el nombre: queda solo el avatar. --}}
+                    <x-desktop-user-menu class="ms-1.5" hide-name-on-mobile />
                 @else
                     {{-- Registro en `ghost` y acceso en `primary`: son dos
                          acciones seguidas y solo una puede llevar el peso. --}}
@@ -82,6 +83,13 @@
                         <flux:sidebar.item icon="squares-2x2" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                             {{ __('Panel') }}
                         </flux:sidebar.item>
+
+                        {{-- La misma condición que la píldora del navbar, que en móvil está oculta. --}}
+                        @if (auth()->user()->canAccessBackoffice())
+                            <flux:sidebar.item icon="briefcase" :href="route('backoffice.index')" :current="request()->routeIs('backoffice.*')" wire:navigate>
+                                {{ __('Backoffice') }}
+                            </flux:sidebar.item>
+                        @endif
                     </flux:sidebar.group>
                 </flux:sidebar.nav>
             @endauth
