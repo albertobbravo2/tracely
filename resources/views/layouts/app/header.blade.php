@@ -40,7 +40,8 @@
                     @endif
                 @endauth
 
-                <x-appearance-toggle class="ms-1.5" />
+                {{-- En móvil el conmutador vive en el menú lateral, como las píldoras. --}}
+                <x-appearance-toggle class="ms-1.5 max-lg:hidden" />
 
                 @auth
                     {{-- En móvil el navbar no tiene sitio para el nombre: queda solo el avatar. --}}
@@ -95,6 +96,27 @@
             @endauth
 
             <flux:spacer />
+
+            {{-- Mismo `$flux.appearance` que `x-appearance-toggle`. Se pintan los
+                 dos estados y el CSS enseña el que toca, igual que el botón del
+                 navbar con sus iconos. El `tooltip` va fijo porque, si no, Flux lo
+                 rellena con el HTML de las dos etiquetas. --}}
+            <flux:sidebar.nav>
+                <flux:sidebar.item
+                    as="button"
+                    :tooltip="__('Cambiar tema')"
+                    x-data
+                    x-on:click="$flux.appearance = $flux.appearance === 'dark' ? 'light' : 'dark'"
+                >
+                    <x-slot:icon>
+                        <flux:icon icon="sun" class="hidden size-4 dark:block" />
+                        <flux:icon icon="moon" class="size-4 dark:hidden" />
+                    </x-slot:icon>
+
+                    <span class="dark:hidden">{{ __('Modo oscuro') }}</span>
+                    <span class="hidden dark:inline">{{ __('Modo claro') }}</span>
+                </flux:sidebar.item>
+            </flux:sidebar.nav>
         </flux:sidebar>
 
         {{ $slot }}
