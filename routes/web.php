@@ -4,6 +4,13 @@ use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'home')->name('home');
 
+// Páginas legales: texto estático y público, sin sesión ni Livewire de por
+// medio, así que van como `Route::view` igual que la home.
+Route::view('aviso-legal', 'legal.aviso-legal')->name('legal.aviso');
+Route::view('privacidad', 'legal.privacidad')->name('legal.privacidad');
+Route::view('cookies', 'legal.cookies')->name('legal.cookies');
+Route::view('terminos', 'legal.terminos')->name('legal.terminos');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::view('dashboard', 'dashboard')->name('dashboard');
 });
@@ -12,7 +19,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // empresas. Un único `role:` para todo el bloque; la discriminación fina por
 // sección la sigue haciendo la API, que es contra la que van estas pantallas
 // (cada endpoint lleva su propio `permission:`, ver routes/api.php).
-Route::middleware(['auth', 'role:agente|administrador|superadministrador'])
+// `company.active` añade una segunda condición al rol: si la empresa del
+// usuario está desactivada no entra, aunque conserve el rol.
+Route::middleware(['auth', 'role:agente|administrador|superadministrador', 'company.active'])
     ->prefix('backoffice')
     ->name('backoffice.')
     ->group(function () {

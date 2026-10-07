@@ -118,7 +118,7 @@ línea ~1.55.
 
 Barra de 63 px: fondo `surface`, borde inferior de 1 px, padding `[14, 32]`, marca a la
 izquierda y **todo lo demás a la derecha** (no hay enlaces centrados). La marca es un
-cuadrado de 30 px con radio 9 en `primary`, icono `radar` en `on-primary`, y el wordmark
+cuadrado de 30 px con radio 9 en `primary`, icono `package` (una caja) en `on-primary`, y el wordmark
 «Tracely» a 17 px/700.
 
 Los items de navegación son píldoras de radio 9 con icono de 16 px + etiqueta de 14 px: en

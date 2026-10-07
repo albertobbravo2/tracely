@@ -49,6 +49,13 @@ return [
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
+        // MailerSend via API HTTPS (paquete mailersend/laravel-driver). Se define
+        // aparte del mailer 'smtp' (que apunta a Mailpit en local) para poder
+        // alternar entre los dos cambiando solo MAIL_MAILER.
+        'mailersend' => [
+            'transport' => 'mailersend',
+        ],
+
         'ses' => [
             'transport' => 'ses',
         ],
@@ -113,6 +120,29 @@ return [
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Markdown Mail Settings
+    |--------------------------------------------------------------------------
+    |
+    | Las plantillas de correo (las que envuelven cualquier notificación con
+    | canal `mail`) están maquetadas con el diseño de Tracely en
+    | `resources/views/vendor/mail`. `theme` apunta a la hoja de estilo de
+    | `html/themes/tracely.css`, que traduce los tokens de design.md a hex
+    | porque un correo no pasa por Tailwind.
+    |
+    */
+
+    'markdown' => [
+
+        'theme' => 'tracely',
+
+        'paths' => [
+            resource_path('views/vendor/mail'),
+        ],
+
     ],
 
 ];

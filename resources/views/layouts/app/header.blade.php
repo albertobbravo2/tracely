@@ -26,8 +26,8 @@
                         {{ __('Panel') }}
                     </x-nav-pill>
 
-                    {{-- Los mismos roles que protegen el bloque `backoffice.` en routes/web.php. --}}
-                    @if (auth()->user()->hasAnyRole(['agente', 'administrador', 'superadministrador']))
+                    {{-- Mismas condiciones que protegen el bloque `backoffice.` en routes/web.php. --}}
+                    @if (auth()->user()->canAccessBackoffice())
                         <x-nav-pill
                             icon="briefcase"
                             :href="route('backoffice.index')"
@@ -40,10 +40,12 @@
                     @endif
                 @endauth
 
-                <x-appearance-toggle class="ms-1.5" />
+                {{-- En móvil el conmutador vive en el menú lateral, como las píldoras. --}}
+                <x-appearance-toggle class="ms-1.5 max-lg:hidden" />
 
                 @auth
-                    <x-desktop-user-menu class="ms-1.5" />
+                    {{-- En móvil el navbar no tiene sitio para el nombre: queda solo el avatar. --}}
+                    <x-desktop-user-menu class="ms-1.5" hide-name-on-mobile />
                 @else
                     {{-- Registro en `ghost` y acceso en `primary`: son dos
                          acciones seguidas y solo una puede llevar el peso. --}}
@@ -82,11 +84,39 @@
                         <flux:sidebar.item icon="squares-2x2" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                             {{ __('Panel') }}
                         </flux:sidebar.item>
+
+                        {{-- La misma condición que la píldora del navbar, que en móvil está oculta. --}}
+                        @if (auth()->user()->canAccessBackoffice())
+                            <flux:sidebar.item icon="briefcase" :href="route('backoffice.index')" :current="request()->routeIs('backoffice.*')" wire:navigate>
+                                {{ __('Backoffice') }}
+                            </flux:sidebar.item>
+                        @endif
                     </flux:sidebar.group>
                 </flux:sidebar.nav>
             @endauth
 
             <flux:spacer />
+
+            {{-- Mismo `$flux.appearance` que `x-appearance-toggle`. Se pintan los
+                 dos estados y el CSS enseña el que toca, igual que el botón del
+                 navbar con sus iconos. El `tooltip` va fijo porque, si no, Flux lo
+                 rellena con el HTML de las dos etiquetas. --}}
+            <flux:sidebar.nav>
+                <flux:sidebar.item
+                    as="button"
+                    :tooltip="__('Cambiar tema')"
+                    x-data
+                    x-on:click="$flux.appearance = $flux.appearance === 'dark' ? 'light' : 'dark'"
+                >
+                    <x-slot:icon>
+                        <flux:icon icon="sun" class="hidden size-4 dark:block" />
+                        <flux:icon icon="moon" class="size-4 dark:hidden" />
+                    </x-slot:icon>
+
+                    <span class="dark:hidden">{{ __('Modo oscuro') }}</span>
+                    <span class="hidden dark:inline">{{ __('Modo claro') }}</span>
+                </flux:sidebar.item>
+            </flux:sidebar.nav>
         </flux:sidebar>
 
         {{ $slot }}

@@ -1,4 +1,4 @@
-<x-layouts::app :title="__('Rastrea tu paquete')">
+<x-layouts::app :title="__('Rastrea tu paquete')" :footer="true">
     <div class="mx-auto w-full max-w-5xl px-6 pb-20 pt-14 sm:pt-20">
         {{-- Hero. El serif de display (`font-display`) vive solo aquí: es el
              único titular del producto que lo lleva, según design.md. --}}
