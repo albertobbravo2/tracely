@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\ShipmentController;
 use App\Http\Controllers\Api\ShipmentHistoryController;
+use App\Http\Controllers\Api\ShipmentImportController;
 use App\Http\Controllers\Api\ShipmentUserController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
@@ -15,8 +16,9 @@ Route::get('shipments/{shipment}', [ShipmentController::class, 'show'])
     ->middleware('throttle:show-shipment')
     ->name('shipments.show');
 
-// El grupo autentica con sanctum; cada ruta solo declara el permiso que exige.
-Route::middleware('auth:sanctum')->group(function () {
+// El grupo autentica con sanctum y descarta a quien pertenezca a una empresa
+// desactivada; cada ruta solo declara el permiso que exige.
+Route::middleware(['auth:sanctum', 'company.active'])->group(function () {
 
     // SIN PERMISOS (Datos del propio usuario, no de otros)
     Route::get('users/shipments', [UserController::class, 'myshipments'])
@@ -30,6 +32,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('shipments', [ShipmentController::class, 'store'])
         ->middleware('permission:crear pedido')
         ->name('shipments.store');
+
+    // Alta masiva desde un CSV. Mismo permiso que el alta de uno en uno: es
+    // la misma acción, solo que repetida.
+    Route::post('shipments/import', ShipmentImportController::class)
+        ->middleware('permission:crear pedido')
+        ->name('shipments.import');
 
     Route::match(['put', 'patch'], 'shipments/{shipment:tracking_number}', [ShipmentController::class, 'update'])
         ->middleware('permission:editar pedido')
@@ -47,6 +55,18 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::delete('shipments/{shipment:tracking_number}/users', [ShipmentUserController::class, 'destroy'])
         ->name('shipments.users.destroy');
+
+    // Las dos caras de backoffice de esa misma pivote: ver quién sigue un envío
+    // y deshacer el vínculo de cualquiera, no solo el propio. Por eso estas sí
+    // llevan `permission:`, y reutilizan las del pedido —es información suya y
+    // se modifica con él— en vez de estrenar permisos nuevos.
+    Route::get('shipments/{shipment:tracking_number}/users', [ShipmentUserController::class, 'index'])
+        ->middleware('permission:ver pedido')
+        ->name('shipments.users.index');
+
+    Route::delete('shipments/{shipment:tracking_number}/users/{user}', [ShipmentUserController::class, 'detach'])
+        ->middleware('permission:editar pedido')
+        ->name('shipments.users.detach');
 
     // Las empresas no tienen endpoint público: gestionarlas es cosa del
     // superadministrador, que es el único rol con estos permisos.

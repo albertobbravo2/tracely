@@ -96,6 +96,65 @@ class ShipmentUserTest extends TestCase
         $this->assertDatabaseHas('users', ['id' => $seVa->id]);
     }
 
+    public function test_el_backoffice_lista_los_usuarios_que_siguen_un_envio(): void
+    {
+        $shipment = Shipment::factory()->create();
+        $clientes = User::factory()->count(2)->create();
+        $shipment->users()->attach($clientes->pluck('id'));
+
+        $agente = User::factory()->create()->assignRole('agente');
+
+        $respuesta = $this->actingAs($agente)
+            ->getJson(route('shipments.users.index', $shipment))
+            ->assertOk();
+
+        $this->assertEqualsCanonicalizing(
+            $clientes->pluck('id')->all(),
+            array_column($respuesta->json('data'), 'id'),
+        );
+    }
+
+    public function test_listar_los_usuarios_de_un_envio_exige_permiso(): void
+    {
+        $cliente = User::factory()->create();
+
+        $this->actingAs($cliente)
+            ->getJson(route('shipments.users.index', Shipment::factory()->create()))
+            ->assertForbidden();
+    }
+
+    public function test_el_backoffice_deshace_el_vinculo_de_otra_cuenta(): void
+    {
+        $shipment = Shipment::factory()->create();
+        [$uno, $otro] = User::factory()->count(2)->create()->all();
+        $shipment->users()->attach([$uno->id, $otro->id]);
+
+        $agente = User::factory()->create()->assignRole('agente');
+
+        $this->actingAs($agente)
+            ->deleteJson(route('shipments.users.detach', ['shipment' => $shipment, 'user' => $uno]))
+            ->assertNoContent();
+
+        // Se va la fila de la pivote, no la cuenta ni el vínculo del otro.
+        $this->assertSame([$otro->id], $shipment->fresh()->users->pluck('id')->all());
+        $this->assertModelExists($uno);
+    }
+
+    public function test_deshacer_el_vinculo_de_otra_cuenta_exige_permiso(): void
+    {
+        $shipment = Shipment::factory()->create();
+        $cliente = User::factory()->create();
+        $shipment->users()->attach($cliente->id);
+
+        // Un cliente sí puede quitarse a sí mismo (`shipments.users.destroy`),
+        // pero no usar la ruta de backoffice para tocar vínculos ajenos.
+        $this->actingAs($cliente)
+            ->deleteJson(route('shipments.users.detach', ['shipment' => $shipment, 'user' => $cliente]))
+            ->assertForbidden();
+
+        $this->assertCount(1, $shipment->fresh()->users);
+    }
+
     public function test_sin_autenticar_no_se_puede_vincular(): void
     {
         $shipment = Shipment::factory()->create();

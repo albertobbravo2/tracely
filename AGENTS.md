@@ -20,10 +20,18 @@ and structure follow standard English Laravel conventions.
   intencional es la consulta pública de seguimiento (rama sin autenticar de `shipments.show`,
   ver "Auth & authorization"). Al añadir un endpoint nuevo, asume que es para backoffice
   (gated por `permission:`) salvo que se indique lo contrario.
+- **Lee [design.md](design.md) antes de tocar la UI**: es obligatorio antes de modificar
+  cualquier vista Blade/Livewire, clase de Tailwind o `resources/css/app.css`. Define la
+  paleta semántica, la tipografía, el mapeo de `ShipmentStatus` a color y los patrones de
+  navbar, sidebar, tabla, formulario y modal. El diseño de referencia del que sale vive en
+  [UI.pen](UI.pen), sección «★ Tracely — Diseño final». Si lo que vas a hacer contradice
+  `design.md`, dilo antes de escribir código.
 - **Sin estilos inline por defecto**: al maquetar o ajustar diseño, reutiliza los componentes
-  Flux y los tokens ya definidos en `resources/css/app.css` (paleta `zinc`/`azul`/`ok`/`alerta`/
-  `gris`, `accent`) en vez de añadir `style="..."` o clases/colores arbitrarios nuevos. Solo te
-  apartas de esto si el usuario lo pide explícitamente.
+  Flux y los tokens del tema definidos en `resources/css/app.css` en vez de añadir
+  `style="..."` o clases/colores arbitrarios nuevos. Los tokens vigentes son los de
+  `design.md`; la paleta antigua (`azul`/`ok`/`alerta`/`gris`, `brand-navy`) está en proceso
+  de sustitución y no debe usarse en pantallas ya migradas. Solo te apartas de esto si el
+  usuario lo pide explícitamente.
 - **No toques la estructura de los datos sin que se pida**: no cambies migraciones, relaciones
   Eloquent, `casts`, los atributos `#[Fillable]`/`#[Hidden]`/`#[Appends]`, ni el enum
   `ShipmentStatus`, como efecto colateral de otra tarea. Si lo que se pide parece requerir un
@@ -101,14 +109,32 @@ watching it.
   (with a comment pointing back at the route). There are no Policy classes yet — if you need
   resource-based authorization (e.g. "only the sender can edit their own shipment") rather than
   flat permission checks, that's the gap to fill.
+- Una empresa desactivada (`companies.is_active = false`) deja a toda su plantilla fuera del
+  backoffice: el middleware `company.active`
+  ([EnsureCompanyIsActive](app/Http/Middleware/EnsureCompanyIsActive.php)) cuelga del bloque
+  `backoffice.` de `routes/web.php` y del grupo `auth:sanctum` de `routes/api.php`, y responde
+  403 sin tocar roles ni permisos. Quedan fuera de la regla las cuentas sin `company_id` (los
+  clientes finales, que se registran por la web y nunca llevan empresa), el
+  `superadministrador` —es el único rol que puede reactivar una empresa, así que bloquearlo
+  sería un callejón sin salida— y la consulta pública de seguimiento, que vive fuera del grupo
+  autenticado. En vistas, usa `User::canAccessBackoffice()` (rol de empleado + empresa activa)
+  en vez de repetir el `hasAnyRole([...])`.
 - API auth is Sanctum, mounted with `statefulApi()` (in [bootstrap/app.php](bootstrap/app.php))
   so same-origin requests carrying the app's own session cookie are recognized by the `sanctum`
   guard without a token; external/token clients authenticate via `Authorization: Bearer`.
 - `shipments.show` (public tracking lookup) sits outside the `auth:sanctum` group and branches
   its response on whether a Sanctum user is present: unauthenticated requests get a whitelisted
-  subset of fields, authenticated requests get the full model plus `histories`. It's also the
+  subset of fields, authenticated requests get the full model plus `histories` and `documents`.
+  Note the split between *listing* and *downloading* a document: any authenticated user sees the
+  attachment list here, but `documents.download` stays behind `permission:ver documento`, so the
+  public tracking card only renders the download button for backoffice roles. It's also the
   only route with a dedicated rate limiter (`show-shipment`, 3 req/s keyed by user id or IP —
-  see `AppServiceProvider::configureRateLimiting()`).
+  see `AppServiceProvider::configureRateLimiting()`). Because the searchfield calls the API
+  server-to-server, the request IP is the server's; the component forwards the visitor's real
+  IP in `X-Tracely-Visitor-Ip`, which the limiter only honours when `X-Tracely-Internal`
+  carries `services.internal_api.secret` (an HMAC of `APP_KEY`). Any other component that
+  calls this route on behalf of anonymous visitors must send both headers, or every guest
+  ends up sharing one bucket.
 
 ### API conventions
 
@@ -150,7 +176,9 @@ Lo que se cachea, y cuándo, lo decide [ShipmentObserver](app/Observers/Shipment
 `status` `entregado` — es el único estado que ya no cambia — bajo la clave
 `ShipmentObserver::cacheKey($tracking_number)`. Si el estado deja de ser `entregado`, o el
 envío se borra, el Observer limpia esa entrada. El payload cacheado es el envío completo
-(incluye `histories`); el controlador aplica el mismo recorte público/privado sobre el dato
+(incluye `histories` y `documents`, exactamente lo mismo que devuelve la rama autenticada del
+controlador: si aquí faltara algo, la respuesta dependería de si hubo hit de caché o no); el
+controlador aplica el mismo recorte público/privado sobre el dato
 cacheado que ya aplicaba sobre el dato de base de datos, así que un hit de caché nunca expone
 a un usuario sin sesión más de lo que vería sin caché.
 
@@ -176,12 +204,18 @@ Project-specific conventions for these are written up in `.claude/skills/`
 Claude Code loads these automatically when relevant; if you're a different agent, read them
 directly — they're plain Markdown, not Claude-specific.
 
-One thing worth knowing that isn't spelled out in those skill docs: beyond the `zinc` neutral
-scale, `app.css` also defines a separate custom brand palette (`azul-*`, `ok*`, `alerta*`,
-`gris-*`, `blanco`, `brand-navy`) that the actual product UI (e.g. the searchfield result card)
-uses for shipment-status semantics — `ok` for entregado, `alerta` for incidencia, `azul` for
-en_transito/en_aduana, `gris` for pendiente/default/unrecognized. Match whichever palette the
-surrounding view already uses.
+Those skill docs cover *syntax*; the *visual direction* — palette, typography, status colors
+and component patterns — lives in [design.md](design.md), which is required reading before
+any UI change.
+
+One thing worth knowing that isn't spelled out in either: beyond the `zinc` neutral scale,
+`app.css` still defines the older custom brand palette (`azul-*`, `ok*`, `alerta*`, `gris-*`,
+`blanco`, `brand-navy`) that parts of the product UI (e.g. the searchfield result card) use
+for shipment-status semantics — `ok` for entregado, `alerta` for incidencia, `azul` for
+en_transito/en_aduana, `gris` for pendiente/default/unrecognized. That palette is being
+replaced by the semantic tokens in `design.md` (which splits en_transito and en_aduana into
+distinct colors). In a view that hasn't been migrated yet, match the surrounding palette
+rather than mixing the two mid-file.
 
 There's no `resources/lang` directory — `__()` wraps hardcoded Spanish strings for
 future-proofing; it isn't backed by an active translation table today.

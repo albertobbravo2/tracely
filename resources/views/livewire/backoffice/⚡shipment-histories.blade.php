@@ -214,7 +214,9 @@ class extends BackofficeComponent
      */
     private function forInput(?string $date): string
     {
-        return ($date ? Carbon::parse($date) : now())->format('Y-m-d\TH:i');
+        // Sin `timezone()` la hora que devuelve la API (UTC) entraría tal cual
+        // en el campo, y guardar sin tocarla movería el evento dos horas atrás.
+        return ($date ? Carbon::parse($date)->timezone(config('app.timezone')) : now())->format('Y-m-d\TH:i');
     }
 
     /**
@@ -230,7 +232,12 @@ class extends BackofficeComponent
 
     public function eventDate(?string $date): string
     {
-        return $date ? Carbon::parse($date)->locale('es')->translatedFormat('j M Y · H:i') : '—';
+        // La API serializa las fechas en UTC (`...Z`) aunque la app viva en
+        // Madrid, así que sin convertir aquí un evento de las 16:40 se leería
+        // como las 14:40.
+        return $date
+            ? Carbon::parse($date)->timezone(config('app.timezone'))->locale('es')->translatedFormat('j M Y · H:i')
+            : '—';
     }
 
     /**
@@ -289,28 +296,32 @@ class extends BackofficeComponent
                 </x-backoffice.empty>
             @endif
         @else
-            <div class="space-y-4">
-                <flux:table>
-                    <flux:table.columns>
-                        <flux:table.column>{{ __('Guía') }}</flux:table.column>
-                        <flux:table.column class="max-sm:hidden">{{ __('Estado') }}</flux:table.column>
-                        <flux:table.column class="max-md:hidden">{{ __('Ubicación') }}</flux:table.column>
-                        <flux:table.column class="max-xl:hidden">{{ __('Descripción') }}</flux:table.column>
-                        <flux:table.column class="max-sm:hidden">{{ __('Ocurrió') }}</flux:table.column>
-                        <flux:table.column class="text-end">{{ __('Acciones') }}</flux:table.column>
+            {{-- Tabla como tarjeta: `surface` con borde, cabecera sobre `surface-2`
+                 y filas separadas por 1 px de `line` (design.md → Tabla). Las
+                 celdas de los extremos recuperan el padding lateral que Flux les
+                 quita (`first:ps-0`), que aquí las pegaba al borde de la tarjeta. --}}
+            <div class="overflow-hidden rounded-xl border border-line bg-surface">
+                <flux:table class="[&_td:first-child]:ps-5 [&_td:last-child]:pe-5 [&_th:first-child]:ps-5 [&_th:last-child]:pe-5">
+                    <flux:table.columns class="bg-surface-2 [&_th]:text-xs [&_th]:font-semibold">
+                        <flux:table.column align="center">{{ __('Guía') }}</flux:table.column>
+                        <flux:table.column align="center" class="max-sm:hidden">{{ __('Estado') }}</flux:table.column>
+                        <flux:table.column align="center" class="max-md:hidden">{{ __('Ubicación') }}</flux:table.column>
+                        <flux:table.column align="center" class="max-xl:hidden">{{ __('Descripción') }}</flux:table.column>
+                        <flux:table.column align="center" class="max-sm:hidden">{{ __('Ocurrió') }}</flux:table.column>
+                        <flux:table.column align="center">{{ __('Acciones') }}</flux:table.column>
                     </flux:table.columns>
 
                     <flux:table.rows>
                         @foreach ($histories as $history)
                             <flux:table.row :key="$history['id']">
                                 <flux:table.cell>
-                                    <span class="font-semibold text-gris-900 dark:text-blanco">
+                                    <span class="font-semibold text-primary">
                                         {{ $history['shipment']['tracking_number'] ?? '—' }}
                                     </span>
 
                                     {{-- En móvil solo caben dos columnas sin empujar las
                                          acciones fuera de pantalla: el resto se pliega aquí. --}}
-                                    <span class="block text-sm text-gris-600 sm:hidden dark:text-azul-200">
+                                    <span class="block text-sm text-ink-2 sm:hidden">
                                         {{ $this->eventDate($history['recorded_at'] ?? null) }}
                                     </span>
 
@@ -319,7 +330,7 @@ class extends BackofficeComponent
                                     </span>
                                 </flux:table.cell>
 
-                                <flux:table.cell class="max-sm:hidden">
+                                <flux:table.cell align="center" class="max-sm:hidden">
                                     <x-backoffice.status-badge :status="$history['status'] ?? null" />
                                 </flux:table.cell>
 
@@ -338,8 +349,8 @@ class extends BackofficeComponent
                                     {{ $this->eventDate($history['recorded_at'] ?? null) }}
                                 </flux:table.cell>
 
-                                <flux:table.cell class="text-end">
-                                    <div class="flex justify-end gap-1">
+                                <flux:table.cell align="center">
+                                    <div class="flex justify-center gap-1">
                                         <flux:button
                                             size="sm"
                                             variant="ghost"
@@ -361,7 +372,9 @@ class extends BackofficeComponent
                     </flux:table.rows>
                 </flux:table>
 
-                <x-backoffice.pagination :meta="$meta" />
+                <div class="px-5 pb-4">
+                    <x-backoffice.pagination :meta="$meta" />
+                </div>
             </div>
         @endif
     </x-backoffice.busy>

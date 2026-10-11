@@ -16,6 +16,8 @@ class ShipmentHistoryController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $actor = $request->user();
+
         $histories = ShipmentHistory::query()
             // El listado del backoffice muestra el número de guía, no el id:
             // sin el eager load cada fila sería una consulta aparte.
@@ -23,6 +25,13 @@ class ShipmentHistoryController extends Controller
             ->when(
                 $request->integer('shipment_id'),
                 fn ($query, $shipmentId) => $query->where('shipment_id', $shipmentId),
+            )
+            // El evento no tiene su propio `company_id`: se filtra por la
+            // empresa del pedido al que pertenece. Solo para quien no es
+            // superadministrador, que ve el historial de todas.
+            ->when(
+                ! $actor->hasRole('superadministrador'),
+                fn ($query) => $query->whereRelation('shipment', 'company_id', $actor->company_id),
             )
             ->orderBy('recorded_at')
             ->paginate(15);

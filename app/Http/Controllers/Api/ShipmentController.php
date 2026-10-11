@@ -23,6 +23,8 @@ class ShipmentController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $actor = $request->user();
+
         $shipments = Shipment::query()
             ->when(
                 $request->string('search')->trim()->value(),
@@ -37,9 +39,16 @@ class ShipmentController extends Controller
                 $request->string('status')->value(),
                 fn ($query, string $status) => $query->where('status', $status),
             )
+            // Quien no es superadministrador solo ve los pedidos de su propia
+            // empresa: el filtro `company_id` de la petición se ignora para
+            // ellos, así no pueden asomarse a otra pidiéndola por parámetro.
             ->when(
-                $request->integer('company_id'),
-                fn ($query, int $companyId) => $query->where('company_id', $companyId),
+                ! $actor->hasRole('superadministrador'),
+                fn ($query) => $query->where('company_id', $actor->company_id),
+                fn ($query) => $query->when(
+                    $request->integer('company_id'),
+                    fn ($query, int $companyId) => $query->where('company_id', $companyId),
+                ),
             )
             ->latest('id')
             ->paginate(15);
@@ -113,8 +122,16 @@ class ShipmentController extends Controller
             ]));
         }
 
+        // Los documentos viajan con el mismo criterio que el histórico: solo en
+        // la rama autenticada. La rama pública de arriba es una lista blanca de
+        // campos, así que añadirlos aquí no los expone a quien no tiene sesión.
+        // Lo que sí sigue protegido por `permission:ver documento` es la
+        // descarga (`documents.download`): esto solo enseña qué hay adjunto.
         return response()->json(
-            $model->load(['histories' => fn ($query) => $query->orderBy('recorded_at')])
+            $model->load([
+                'histories' => fn ($query) => $query->orderBy('recorded_at'),
+                'documents' => fn ($query) => $query->orderBy('id'),
+            ])
         );
     }
 
@@ -160,4 +177,12 @@ class ShipmentController extends Controller
 
         return response()->json(status: 204);
     }
+
+    /**
+     * Llevar a la pantalla de detalle de un pedido a partir de su guía.
+     *
+     * No devuelve JSON como el resto del controlador: es la única acción de
+     * cara al navegador, y solo redirige. Que el pedido exista o no lo resuelve
+     * la pantalla de destino, que ya pide el dato a `shipments.show`.
+     */
 }

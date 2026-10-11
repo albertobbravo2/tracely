@@ -33,6 +33,11 @@ class UserFormTest extends TestCase
         return User::factory()->create()->assignRole('agente');
     }
 
+    private function administrador(): User
+    {
+        return User::factory()->create()->assignRole('administrador');
+    }
+
     private function superadmin(): User
     {
         return User::factory()->create()->assignRole('superadministrador');
@@ -170,6 +175,83 @@ class UserFormTest extends TestCase
             || (array_key_exists('company_id', $request->data()) && $request->data()['company_id'] === null));
     }
 
+    public function test_el_alta_manda_el_rol_elegido(): void
+    {
+        $this->fingirApi();
+
+        Livewire::actingAs($this->superadmin())
+            ->test('backoffice.users')
+            ->call('create')
+            ->set('name', 'Ana Agente')
+            ->set('email', 'ana@tracely.test')
+            ->set('password', 'contrasena-larga')
+            ->set('role', 'administrador')
+            ->call('save');
+
+        Http::assertSent(fn (Request $request) => $request->method() !== 'POST'
+            || $request->data()['role'] === 'administrador');
+    }
+
+    public function test_dejar_el_rol_vacio_lo_manda_a_null(): void
+    {
+        $this->fingirApi();
+
+        Livewire::actingAs($this->superadmin())
+            ->test('backoffice.users')
+            ->call('create')
+            ->set('name', 'Ana Agente')
+            ->set('email', 'ana@tracely.test')
+            ->set('password', 'contrasena-larga')
+            ->call('save');
+
+        // Igual que `company_id`: mandarlo a null es como se deja la cuenta
+        // sin rol.
+        Http::assertSent(fn (Request $request) => $request->method() !== 'POST'
+            || (array_key_exists('role', $request->data()) && $request->data()['role'] === null));
+    }
+
+    public function test_un_agente_solo_ve_su_propio_rol_como_opcion(): void
+    {
+        $this->fingirApi();
+
+        Livewire::actingAs($this->empleado())
+            ->test('backoffice.users')
+            ->call('create')
+            ->assertSee('Agente')
+            ->assertDontSee('Administrador')
+            ->assertDontSee('Superadministrador');
+    }
+
+    public function test_un_administrador_ve_hasta_su_propio_rol(): void
+    {
+        $this->fingirApi();
+
+        Livewire::actingAs($this->administrador())
+            ->test('backoffice.users')
+            ->call('create')
+            ->assertSee('Agente')
+            ->assertSee('Administrador')
+            ->assertDontSee('Superadministrador');
+    }
+
+    public function test_la_edicion_carga_el_rol_actual(): void
+    {
+        Http::fake([
+            '*/api/users/7' => Http::response([
+                'id' => 7,
+                'name' => 'Ana Agente',
+                'email' => 'ana@tracely.test',
+                'roles' => [['name' => 'administrador']],
+            ]),
+            '*' => Http::response(['data' => [], 'current_page' => 1, 'last_page' => 1, 'total' => 0]),
+        ]);
+
+        Livewire::actingAs($this->superadmin())
+            ->test('backoffice.users')
+            ->call('edit', 7)
+            ->assertSet('role', 'administrador');
+    }
+
     public function test_un_agente_no_pide_la_lista_de_empresas(): void
     {
         $this->fingirApi();
@@ -271,7 +353,7 @@ class UserFormTest extends TestCase
 
         Livewire::actingAs($this->superadmin())
             ->test('backoffice.users')
-            ->assertSee('Cliente (sin rol)')
+            ->assertSee('Cliente')
             // El rol viene en minúscula de la API; en pantalla se lee como un
             // nombre, no como un identificador.
             ->assertSee('Agente');

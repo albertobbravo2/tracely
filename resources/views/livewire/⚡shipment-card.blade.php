@@ -5,6 +5,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -30,6 +31,9 @@ new class extends Component
 
     public bool $linked = false;
 
+    /** @var list<array<string, mixed>> */
+    public array $documents = [];
+
     public ?string $errorMessage = null;
 
     /**
@@ -41,6 +45,11 @@ new class extends Component
     public function mount(?bool $linked = null): void
     {
         $this->linked = $linked ?? $this->isLinked();
+
+        // `shipments.show` ya trae los documentos en su rama autenticada, igual
+        // que el histórico, así que con sesión no hace falta pedirlos aparte.
+        // El respaldo es para "Mis pedidos", que se alimenta de otro endpoint.
+        $this->documents = $this->documentsFromShipment() ?? $this->loadDocuments();
     }
 
     /**
@@ -164,21 +173,131 @@ new class extends Component
             ->where('tracking_number', $trackingNumber)
             ->exists();
     }
+
+    /**
+     * ¿Quien mira puede ver los documentos del envío?
+     *
+     * Los tres roles del backoffice, igual que el permiso "ver documento" del
+     * seeder (ver el comentario en RolesAndPermissionsSeeder): un cliente sin
+     * rol no los ve nunca, se pinte esta tarjeta donde se pinte. Se comprueba
+     * por rol y no con `can('ver documento')` porque esta tarjeta también la
+     * monta ⚡searchfield para un invitado, y ahí no hay sesión sobre la que
+     * evaluar el permiso.
+     */
+    /**
+     * ¿Quien mira puede además descargarlos?
+     *
+     * Ver la lista y bajarse el fichero son dos cosas distintas: la descarga
+     * (`documents.download`) sigue detrás de `permission:ver documento`, que
+     * solo tienen los roles del backoffice. A un cliente se le enseña qué hay
+     * adjunto, pero el botón no se pinta porque le respondería un 403. Lo
+     * mismo vale para un empleado cuya empresa esté desactivada: el grupo
+     * autenticado de la API lleva `company.active`, así que la descarga
+     * también le respondería 403.
+     */
+    public function canViewDocuments(): bool
+    {
+        return auth()->user()?->canAccessBackoffice() ?? false;
+    }
+
+    /**
+     * Documentos del envío, solo para quien tiene rol para verlos.
+     *
+     * Esta tarjeta la pinta tanto el buscador público como "Mis pedidos", así
+     * que se comprueba el rol antes de llamar —igual que `loadCompanies()` en
+     * el backoffice—: los documentos no son públicos como el seguimiento, y
+     * sin `id` —la rama pública de `shipments.show` no lo trae— tampoco hay
+     * por qué preguntarlos.
+     *
+     * @return list<array<string, mixed>>
+     */
+    /**
+     * Documentos que ya vienen dentro del envío.
+     *
+     * Devuelve null —y no un array vacío— cuando la clave no está, para poder
+     * distinguir "esta respuesta no los trae" de "los trae y no hay ninguno".
+     * Solo en el primer caso tiene sentido salir a preguntarlos.
+     *
+     * @return list<array<string, mixed>>|null
+     */
+    private function documentsFromShipment(): ?array
+    {
+        $documents = $this->shipment['documents'] ?? null;
+
+        if (! is_array($documents)) {
+            return null;
+        }
+
+        return array_values(array_filter($documents, is_array(...)));
+    }
+
+    private function loadDocuments(): array
+    {
+        $shipmentId = $this->shipment['id'] ?? null;
+
+        if ($shipmentId === null || ! $this->canViewDocuments()) {
+            return [];
+        }
+
+        $response = $this->callApi('get', route('documents.index', [
+            'shipment_id' => (int) $shipmentId,
+        ], absolute: false));
+
+        if ($response === null || $response->failed()) {
+            return [];
+        }
+
+        $rows = $response->json('data');
+
+        return is_array($rows) ? array_values(array_filter($rows, is_array(...))) : [];
+    }
+
+    /**
+     * Tono del distintivo de estado de un documento.
+     *
+     * Mismo criterio que ⚡documents.blade.php: el estado es texto libre en la
+     * API —no hay enum detrás, a diferencia del de los envíos—, así que se
+     * reconocen las raíces habituales en castellano y todo lo demás se queda
+     * en gris.
+     */
+    public function statusTone(?string $status): string
+    {
+        $normalized = Str::lower(Str::ascii(trim((string) $status)));
+
+        return match (true) {
+            Str::contains($normalized, ['aprobad', 'validad', 'aceptad', 'verificad', 'conform']) => 'ok',
+            Str::contains($normalized, ['rechazad', 'denegad', 'caducad', 'error', 'incidencia', 'invalid']) => 'alerta',
+            Str::contains($normalized, ['pendiente', 'revis', 'proces', 'tramit', 'espera']) => 'azul',
+            default => 'gris',
+        };
+    }
+
+    /**
+     * Estado del documento tal y como se pinta: con la inicial en mayúscula, y
+     * con un texto propio cuando viene vacío en vez de un distintivo mudo.
+     */
+    public function statusLabel(?string $status): string
+    {
+        $status = trim((string) $status);
+
+        return $status === '' ? __('Sin estado') : Str::ucfirst($status);
+    }
 };
 ?>
-
-<div class="rounded-2xl border border-gris-200 bg-blanco p-6 shadow-sm sm:p-8 dark:border-azul-800 dark:bg-azul-900">
-    <div class="flex items-start justify-between gap-4">
-        <div>
-            <flux:text class="text-gris-600 dark:text-azul-100">{{ __('Guía') }}</flux:text>
+<div class="rounded-2xl border border-line bg-surface p-6 sm:p-7">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="min-w-0">
+            <flux:text class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">
+                {{ __('Número de guía') }}
+            </flux:text>
 
             {{-- El estado va con la guía, no en la esquina: describe al envío,
                  igual que el número, y arriba a la derecha solo quedaba apilado
                  sobre un botón con el que no tiene nada que ver. --}}
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <flux:heading size="lg" class="text-gris-900 dark:text-blanco">
+            <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <p class="font-mono text-2xl font-semibold tracking-[-0.02em] text-ink">
                     {{ $shipment['tracking_number'] ?? '—' }}
-                </flux:heading>
+                </p>
 
                 <x-backoffice.status-badge :status="$shipment['status'] ?? null" />
             </div>
@@ -206,7 +325,7 @@ new class extends Component
                         wire:click="link"
                         wire:loading.attr="disabled"
                         wire:target="link"
-                        class="[--color-accent-foreground:var(--color-white)] [--color-accent:var(--color-brand-navy)]"
+                        class="shadow-elev"
                     >
                         {{ __('Vincular') }}
                     </flux:button>
@@ -216,31 +335,161 @@ new class extends Component
     </div>
 
     @if ($errorMessage)
-        <div class="mt-4 rounded-xl border border-gris-200 bg-gris-050 px-4 py-3 dark:border-azul-800 dark:bg-azul-900">
-            <flux:text class="text-gris-600 dark:text-azul-100">{{ $errorMessage }}</flux:text>
+        <div class="mt-5 flex items-start gap-3 rounded-xl border border-line bg-surface-2 px-4 py-3">
+            <flux:icon name="exclamation-triangle" variant="outline" class="mt-0.5 size-5 shrink-0 text-warn" />
+
+            <flux:text class="text-ink-2">{{ $errorMessage }}</flux:text>
         </div>
     @endif
 
-    <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    {{-- Metadatos como lista etiqueta/valor. `receiver_name` solo llega en la
+         respuesta autenticada de la API, así que su columna aparece o no según
+         quién mire, y el número de columnas se ajusta a los campos que hay: con
+         cuatro fijas, sin destinatario quedaba un hueco y los otros tres se
+         estrechaban de más. Las dos combinaciones van escritas enteras porque
+         el JIT de Tailwind no ve las clases que se arman por concatenación. --}}
+    @php
+        $metaColumns = ($shipment['receiver_name'] ?? null)
+            ? 'sm:grid-cols-2 lg:grid-cols-4'
+            : 'sm:grid-cols-3';
+    @endphp
+
+    <dl class="mt-6 grid grid-cols-1 gap-x-6 gap-y-4 border-t border-line pt-6 {{ $metaColumns }}">
         <div>
-            <flux:text class="text-gris-600 dark:text-azul-100">{{ __('Origen') }}</flux:text>
-            <p class="font-semibold text-gris-900 dark:text-blanco">{{ $shipment['origin'] ?? '—' }}</p>
+            <dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">{{ __('Origen') }}</dt>
+            <dd class="mt-1 font-semibold text-ink">{{ $shipment['origin'] ?? '—' }}</dd>
         </div>
+
         <div>
-            <flux:text class="text-gris-600 dark:text-azul-100">{{ __('Destino') }}</flux:text>
-            <p class="font-semibold text-gris-900 dark:text-blanco">{{ $shipment['destination'] ?? '—' }}</p>
+            <dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">{{ __('Destino') }}</dt>
+            <dd class="mt-1 font-semibold text-ink">{{ $shipment['destination'] ?? '—' }}</dd>
         </div>
+
+        @if ($shipment['receiver_name'] ?? null)
+            <div>
+                <dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">{{ __('Destinatario') }}</dt>
+                <dd class="mt-1 font-semibold text-ink">{{ $shipment['receiver_name'] }}</dd>
+            </div>
+        @endif
+
         <div>
-            <flux:text class="text-gris-600 dark:text-azul-100">{{ __('Entrega estimada') }}</flux:text>
-            <p class="font-semibold text-ok dark:text-ok-claro">{{ $this->estimatedDelivery ?? '—' }}</p>
+            <dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">{{ __('Entrega estimada') }}</dt>
+            <dd class="mt-1 font-semibold text-ink">{{ $this->estimatedDelivery ?? '—' }}</dd>
         </div>
-    </div>
+    </dl>
 
     {{-- El histórico solo llega en la respuesta autenticada de la API: sin él
-         no se pinta nada aquí abajo, tampoco el separador. --}}
-    @if ($shipment['histories'] ?? [])
-        <flux:separator class="mt-6" />
+         no se pinta nada aquí abajo, tampoco el separador.
 
-        <x-shipment-timeline :histories="$shipment['histories']" class="mt-6" />
+         La línea de tiempo va maquetada aquí y no en el componente
+         x-shipment-timeline porque el diseño la pide con icono por evento en
+         vez de con puntos, y esta tarjeta es hoy su único sitio. --}}
+    @if ($shipment['histories'] ?? [])
+        <div class="mt-6 border-t border-line pt-6">
+            <flux:text class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">
+                {{ __('Historial del envío') }}
+            </flux:text>
+
+            <ol class="mt-4">
+                @foreach ($shipment['histories'] as $event)
+                    @php
+                        $case = \App\Enums\ShipmentStatus::tryFrom((string) ($event['status'] ?? ''));
+
+                        // Mismo mapeo estado → token que <x-backoffice.status-badge>
+                        // (design.md → Estados de envío), resuelto aquí a icono
+                        // y color de nodo en vez de a badge.
+                        $styles = match ($case) {
+                            \App\Enums\ShipmentStatus::Entregado => ['icon' => 'check-circle', 'tone' => 'bg-ok-soft text-ok'],
+                            \App\Enums\ShipmentStatus::EnTransito => ['icon' => 'truck', 'tone' => 'bg-info-soft text-info'],
+                            \App\Enums\ShipmentStatus::EnAduana => ['icon' => 'building-office-2', 'tone' => 'bg-aduana-soft text-aduana'],
+                            \App\Enums\ShipmentStatus::Incidencia => ['icon' => 'exclamation-triangle', 'tone' => 'bg-danger-soft text-danger'],
+                            default => ['icon' => 'clock', 'tone' => 'bg-idle-soft text-idle'],
+                        };
+
+                        $meta = collect([
+                            $event['location'] ?? null,
+                            // locale('es') explícito: APP_LOCALE es 'en' pero la
+                            // interfaz está en español, y sin esto saldría
+                            // "9 Aug 2026". Y timezone() porque la API serializa
+                            // en UTC aunque la app viva en Madrid: sin convertir,
+                            // las 16:40 se leen 14:40.
+                            isset($event['recorded_at'])
+                                ? \Illuminate\Support\Carbon::parse($event['recorded_at'])->timezone(config('app.timezone'))->locale('es')->translatedFormat('j M Y · H:i')
+                                : null,
+                        ])->filter()->join(' · ');
+                    @endphp
+
+                    <li class="relative flex gap-3.5 pb-6 last:pb-0">
+                        @unless ($loop->last)
+                            <span aria-hidden="true" class="absolute bottom-0 start-4 top-9 w-px bg-line"></span>
+                        @endunless
+
+                        <span @class(['relative flex size-8 shrink-0 items-center justify-center rounded-full', $styles['tone']])>
+                            <flux:icon :name="$styles['icon']" variant="micro" class="size-4" />
+                        </span>
+
+                        <div class="min-w-0 pt-1">
+                            <p class="font-semibold text-ink">
+                                {{ $case?->label() ?? __('Estado desconocido') }}
+                            </p>
+
+                            @if ($event['description'] ?? null)
+                                <p class="mt-0.5 text-sm leading-relaxed text-ink-2">{{ $event['description'] }}</p>
+                            @endif
+
+                            @if ($meta)
+                                <p class="mt-0.5 text-xs text-ink-muted">{{ $meta }}</p>
+                            @endif
+                        </div>
+                    </li>
+                @endforeach
+            </ol>
+        </div>
+    @endif
+
+    {{-- Los documentos llegan con la respuesta autenticada del envío, igual que
+         el histórico, así que la sección aparece con sesión y solo si hay algo
+         adjunto. El botón de descarga es aparte: ver la lista no da permiso
+         para bajarse el fichero. --}}
+    @if ($documents)
+        <div class="mt-6 space-y-3 border-t border-line pt-6">
+            <flux:text class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">
+                {{ __('Documentos') }}
+            </flux:text>
+
+            <ul class="space-y-2">
+                @foreach ($documents as $document)
+                    <li class="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2">
+                        <div class="flex min-w-0 items-center gap-2.5">
+                            <flux:icon name="paper-clip" variant="outline" class="size-4 shrink-0 text-ink-muted" />
+
+                            <div class="min-w-0">
+                                <span class="block truncate font-semibold text-ink">
+                                    {{ $document['document_name'] ?? '—' }}
+                                </span>
+
+                                <x-backoffice.tone-badge :tone="$this->statusTone($document['status'] ?? null)" class="mt-0.5">
+                                    {{ $this->statusLabel($document['status'] ?? null) }}
+                                </x-backoffice.tone-badge>
+                            </div>
+                        </div>
+
+                        @if ($this->canViewDocuments())
+                            {{-- Relativa y armada aquí, no con el `download_url` que
+                                 devuelve la API: esa URL sale con el host de dentro
+                                 del contenedor (ver la nota en ⚡documents.blade.php). --}}
+                            <flux:button
+                                size="sm"
+                                variant="ghost"
+                                icon="arrow-down-tray"
+                                class="shrink-0"
+                                :label="__('Descargar documento')"
+                                :href="route('documents.download', ['document' => $document['id']], absolute: false)"
+                            />
+                        @endif
+                    </li>
+                @endforeach
+            </ul>
+        </div>
     @endif
 </div>

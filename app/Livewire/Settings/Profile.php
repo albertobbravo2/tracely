@@ -10,7 +10,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-#[Title('Profile settings')]
+#[Title('Ajustes · Perfil')]
 class Profile extends Component
 {
     use ProfileValidationRules;

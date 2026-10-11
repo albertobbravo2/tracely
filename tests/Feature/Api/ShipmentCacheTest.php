@@ -102,4 +102,19 @@ class ShipmentCacheTest extends TestCase
             ->assertOk()
             ->assertJsonPath('tracking_number', $shipment->tracking_number);
     }
+
+    public function test_un_envio_cacheado_se_sirve_desde_redis_y_no_desde_la_base_de_datos(): void
+    {
+        $shipment = Shipment::factory()->entregado()->create(['origin' => 'Origen cacheado']);
+
+        // Se cambia la base de datos sin pasar por save(): así el Observer no
+        // se entera y la copia en Redis se queda con el valor viejo. Si la
+        // respuesta trae el valor nuevo, la API está mirando Postgres y no la
+        // caché; si trae el viejo, es la prueba de que de verdad lee Redis.
+        $shipment->newQuery()->where('id', $shipment->id)->update(['origin' => 'Origen en base de datos']);
+
+        $this->getJson(route('shipments.show', ['shipment' => $shipment->tracking_number]))
+            ->assertOk()
+            ->assertJsonPath('origin', 'Origen cacheado');
+    }
 }
