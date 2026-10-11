@@ -1,5 +1,4 @@
 {
-<<<<<<< HEAD
     "version": 2,
     "framework": "vite",
     "outputDirectory": "public",
@@ -18,10 +17,4 @@
             "dest": "/api/index.php"
         }
     ]
-=======
-    "$schema": "https://openapi.vercel.sh/vercel.json",
-    "installCommand": "dnf install -y php8.4-cli php8.4-mbstring php8.4-xml unzip && curl -sS https://getcomposer.org/installer | php -- --install-dir=/tmp && php /tmp/composer.phar install --no-dev --no-scripts --no-interaction --prefer-dist --ignore-platform-reqs && npm install",
-    "buildCommand": "npm run build",
-    "outputDirectory": "public"
->>>>>>> origin/master
 }
