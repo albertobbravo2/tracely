@@ -1,4 +1,36 @@
 <?php
 
-// Redirigir las peticiones al index público de Laravel
-require __DIR__ . '/../public/index.php';
+// Punto de entrada de Laravel en Vercel (runtime vercel-php). Vercel solo admite
+// funciones dentro de api/, y eso obliga a corregir tres cosas antes de arrancar
+// la app. Solo se ejecuta en Vercel: en local y en los tests sigue entrando
+// public/index.php directamente.
+
+// 1. El servidor embebido de PHP resuelve cualquier /api/... a este fichero y
+//    Symfony deduce "/api" como base de la app: /api/shipments/X llegaba a
+//    Laravel como /shipments/X (404) y los assets salían como /api/build/...
+//    Hacemos como si el script fuese public/index.php servido desde la raíz.
+$_SERVER['SCRIPT_FILENAME'] = __DIR__.'/../public/index.php';
+$_SERVER['SCRIPT_NAME'] = '/index.php';
+$_SERVER['PHP_SELF'] = '/index.php';
+
+// 2. El TLS y la IP del visitante se quedan en el edge de Vercel: aquí la
+//    petición llega por HTTP desde 127.0.0.1. Sin esto las URLs de los assets
+//    salen con http:// (contenido mixto, el navegador las bloquea) y todos los
+//    visitantes comparten IP en el limitador show-shipment. Vercel sobrescribe
+//    x-real-ip en el edge, así que el cliente no puede falsearla.
+$_SERVER['HTTPS'] = 'on';
+if (! empty($_SERVER['HTTP_X_REAL_IP'])) {
+    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_REAL_IP'];
+}
+
+// 3. La integración de Neon publica la conexión como DATABASE_URL, marcada como
+//    sensible: no se puede leer ni copiar a otra variable desde el panel ni la
+//    CLI. Laravel la espera en DB_URL (config/database.php), así que la
+//    reenviamos si no se ha definido otra.
+$databaseUrl = getenv('DATABASE_URL');
+if ($databaseUrl && ! getenv('DB_URL')) {
+    putenv("DB_URL={$databaseUrl}");
+    $_ENV['DB_URL'] = $_SERVER['DB_URL'] = $databaseUrl;
+}
+
+require __DIR__.'/../public/index.php';
