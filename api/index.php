@@ -30,11 +30,25 @@ if (! empty($_SERVER['HTTP_X_REAL_IP'])) {
 //    Según cómo arranque vercel-php el servidor embebido, las variables pueden
 //    llegar por getenv() o solo por $_SERVER/$_ENV: miramos las tres.
 $env = fn (string $key) => getenv($key) ?: ($_SERVER[$key] ?? $_ENV[$key] ?? null);
-$databaseUrl = $env('DATABASE_URL');
-if ($databaseUrl && ! $env('DB_URL')) {
+$databaseUrl = $env('DB_URL') ?: $env('DATABASE_URL');
+
+// 4. El libpq que trae vercel-php no soporta SNI, que es como Neon sabe a qué
+//    endpoint va cada conexión ("Endpoint ID is not specified"). Laravel no
+//    pasa `options=endpoint=...` al DSN, así que usamos la otra vía que
+//    documenta Neon: anteponer "endpoint=<id>;" a la contraseña. El id es el
+//    primer trozo del host sin el sufijo -pooler. https://neon.tech/sni
+$parts = $databaseUrl ? parse_url($databaseUrl) : false;
+if ($parts && str_ends_with($parts['host'] ?? '', '.neon.tech') && isset($parts['pass'])
+    && ! str_starts_with(rawurldecode($parts['pass']), 'endpoint=')) {
+    $endpoint = preg_replace('/-pooler$/', '', explode('.', $parts['host'])[0]);
+    $password = rawurlencode("endpoint={$endpoint};".rawurldecode($parts['pass']));
+    $databaseUrl = str_replace(":{$parts['pass']}@", ":{$password}@", $databaseUrl);
+}
+
+if ($databaseUrl) {
     putenv("DB_URL={$databaseUrl}");
     $_ENV['DB_URL'] = $_SERVER['DB_URL'] = $databaseUrl;
 }
-unset($env, $databaseUrl);
+unset($env, $databaseUrl, $parts, $endpoint, $password);
 
 require __DIR__.'/../public/index.php';
