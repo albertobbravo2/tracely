@@ -1,6 +1,7 @@
 {
     "version": 2,
     "framework": "vite",
+    "buildCommand": "bash vercel-build.sh",
     "outputDirectory": "public",
     "functions": {
         "api/index.php": {
