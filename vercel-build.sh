@@ -5,8 +5,9 @@
 # Las migraciones se ejecutan aquí porque la URL de Neon es una variable
 # sensible: solo existe dentro de Vercel y no se puede leer ni copiar a otra
 # máquina. Nunca se hace migrate:fresh ni db:seed completo (DatabaseSeeder crea
-# usuarios de prueba); solo migraciones pendientes y el seeder de roles, que es
-# idempotente. Si algo falla, el build falla y sigue activo el despliegue anterior.
+# usuarios y envíos de prueba); solo migraciones pendientes y los seeders de
+# roles y de cuentas iniciales, ambos idempotentes. Si algo falla, el build
+# falla y sigue activo el despliegue anterior.
 set -euo pipefail
 
 npm run build
@@ -30,3 +31,6 @@ export DB_URL="${DATABASE_URL_UNPOOLED:-$DATABASE_URL}"
 
 php artisan migrate --force
 php artisan db:seed --class=RolesAndPermissionsSeeder --force
+# Cuentas iniciales; las contraseñas vienen de SEED_*_PASSWORD y las cuentas
+# que ya existen no se tocan.
+php artisan db:seed --class=ProductionUsersSeeder --force
