@@ -27,10 +27,14 @@ if (! empty($_SERVER['HTTP_X_REAL_IP'])) {
 //    sensible: no se puede leer ni copiar a otra variable desde el panel ni la
 //    CLI. Laravel la espera en DB_URL (config/database.php), así que la
 //    reenviamos si no se ha definido otra.
-$databaseUrl = getenv('DATABASE_URL');
-if ($databaseUrl && ! getenv('DB_URL')) {
+//    Según cómo arranque vercel-php el servidor embebido, las variables pueden
+//    llegar por getenv() o solo por $_SERVER/$_ENV: miramos las tres.
+$env = fn (string $key) => getenv($key) ?: ($_SERVER[$key] ?? $_ENV[$key] ?? null);
+$databaseUrl = $env('DATABASE_URL');
+if ($databaseUrl && ! $env('DB_URL')) {
     putenv("DB_URL={$databaseUrl}");
     $_ENV['DB_URL'] = $_SERVER['DB_URL'] = $databaseUrl;
 }
+unset($env, $databaseUrl);
 
 require __DIR__.'/../public/index.php';
