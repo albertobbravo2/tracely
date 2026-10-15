@@ -1,5 +1,15 @@
 <?php
+// Forzar reporte de errores visible para depuración
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
 
+// Opcional: Registrar un manejador de excepciones global por si hay un fallo de conexión a Neon
+set_exception_handler(function ($e) {
+    http_response_code(500);
+    echo "Excepción no capturada: " . $e->getMessage();
+    exit;
+});
 // Punto de entrada de Laravel en Vercel (runtime vercel-php). Vercel solo admite
 // funciones dentro de api/, y eso obliga a corregir tres cosas antes de arrancar
 // la app. Solo se ejecuta en Vercel: en local y en los tests sigue entrando
