@@ -14,6 +14,10 @@
             "dest": "/public/build/$1"
         },
         {
+            "src": "/(favicon\\.ico|favicon\\.svg|apple-touch-icon\\.png|robots\\.txt|images/.+)",
+            "dest": "/public/$1"
+        },
+        {
             "src": "/(.*)",
             "dest": "/api/index.php"
         }
