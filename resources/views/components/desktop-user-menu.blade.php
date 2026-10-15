@@ -1,11 +1,19 @@
+@props([
+    'hideNameOnMobile' => false,
+])
+
 {{-- `$attributes` va al desplegable para que quien lo coloque pueda darle
-     ancho o esconderlo por breakpoint; sin esto la clase se perdía. --}}
+     ancho o esconderlo por breakpoint; sin esto la clase se perdía.
+     `hideNameOnMobile` esconde el nombre por debajo de `lg` y deja el avatar y
+     el chevron: el componente de Flux no tiene opción para eso, así que se
+     oculta su `span` del nombre con un selector. --}}
 <flux:dropdown position="bottom" align="start" {{ $attributes }}>
     
     <flux:sidebar.profile
         :name="auth()->user()->name"
         :initials="auth()->user()->initials()"
         icon:trailing="chevrons-up-down"
+        :class="$hideNameOnMobile ? 'max-lg:[&>span]:hidden' : ''"
         data-test="sidebar-menu-button"
     />
 

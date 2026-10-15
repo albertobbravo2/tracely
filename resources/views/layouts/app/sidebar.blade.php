@@ -45,8 +45,8 @@
                         {{ __('Ir a la web') }}
                     </flux:sidebar.item>
 
-                    {{-- Los mismos roles que protegen el bloque `backoffice.` en routes/web.php. --}}
-                    @if (auth()->user()->hasAnyRole(['agente', 'administrador', 'superadministrador']))
+                    {{-- Mismas condiciones que protegen el bloque `backoffice.` en routes/web.php. --}}
+                    @if (auth()->user()->canAccessBackoffice())
                         <flux:sidebar.item
                             icon="briefcase"
                             :href="route('backoffice.index')"

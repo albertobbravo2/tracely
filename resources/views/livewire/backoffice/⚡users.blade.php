@@ -165,6 +165,12 @@ class extends BackofficeComponent
 
     public function confirmDelete(int $id): void
     {
+        // La fila propia no enseña el botón, pero el método se puede llamar
+        // igual desde el navegador. La API también lo rechaza.
+        if ($id === auth()->id()) {
+            return;
+        }
+
         $this->deleting = $id;
 
         Flux::modal('user-delete')->show();
@@ -339,6 +345,17 @@ class extends BackofficeComponent
     }
 
     /**
+     * ¿Es la fila de quien está mirando? Su cuenta no se puede borrar desde
+     * aquí, así que esa fila no lleva el botón de eliminar.
+     *
+     * @param  array<string, mixed>  $user
+     */
+    public function isCurrentUser(array $user): bool
+    {
+        return (int) ($user['id'] ?? 0) === auth()->id();
+    }
+
+    /**
      * Nombre de la cuenta pendiente de borrar, para que el modal de
      * confirmación diga cuál es en vez de un genérico "el usuario".
      */
@@ -455,13 +472,16 @@ class extends BackofficeComponent
                                             :label="__('Editar usuario')"
                                             wire:click="edit({{ $user['id'] }})"
                                         />
-                                        <flux:button
-                                            size="sm"
-                                            variant="ghost"
-                                            icon="trash"
-                                            :label="__('Eliminar usuario')"
-                                            wire:click="confirmDelete({{ $user['id'] }})"
-                                        />
+                                        {{-- Tu propia cuenta no se borra desde aquí. --}}
+                                        @unless ($this->isCurrentUser($user))
+                                            <flux:button
+                                                size="sm"
+                                                variant="ghost"
+                                                icon="trash"
+                                                :label="__('Eliminar usuario')"
+                                                wire:click="confirmDelete({{ $user['id'] }})"
+                                            />
+                                        @endunless
                                     </div>
                                 </flux:table.cell>
                             </flux:table.row>

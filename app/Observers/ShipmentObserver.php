@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Log;
  */
 class ShipmentObserver
 {
-    private const CACHE_TTL_DAYS = 1;
+    private const CACHE_TTL_HOURS = 12;
 
     /**
      * Alta del envío: si viene con un primer evento de historial, se crea aquí.
@@ -78,7 +78,7 @@ class ShipmentObserver
                     'histories' => fn ($query) => $query->orderBy('recorded_at'),
                     'documents' => fn ($query) => $query->orderBy('id'),
                 ])->toArray(),
-                now()->addDays(self::CACHE_TTL_DAYS),
+                now()->addHours(self::CACHE_TTL_HOURS),
             );
         } catch (\Throwable $e) {
             Log::warning('No se pudo cachear el envío en Redis.', [

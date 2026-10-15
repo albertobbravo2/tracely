@@ -40,6 +40,12 @@ return [
         // APP_URL usa el puerto publicado al host (ej. 8080), que no es accesible
         // desde dentro del contenedor: ahí siempre se escucha en el puerto 80.
         'url' => env('APP_INTERNAL_URL', 'http://localhost'),
+
+        // Firma de las llamadas que la app se hace a sí misma. Con ella la API
+        // se fía de la IP del visitante que le pasa el buscador (ver el
+        // limitador `show-shipment` en AppServiceProvider). Sale de APP_KEY
+        // para no añadir otra variable que configurar en cada entorno.
+        'secret' => hash_hmac('sha256', 'internal-api', (string) env('APP_KEY')),
     ],
 
 ];

@@ -172,4 +172,27 @@ class UserTest extends TestCase
         $response->assertOk();
         $this->assertTrue($agente->fresh()->hasRole('agente'));
     }
+
+    public function test_se_puede_eliminar_otra_cuenta(): void
+    {
+        $agente = $this->agente();
+
+        $response = $this->actingAs($this->superadmin())
+            ->deleteJson(route('users.destroy', $agente));
+
+        $response->assertStatus(204);
+        $this->assertModelMissing($agente);
+    }
+
+    public function test_nadie_puede_eliminar_su_propia_cuenta(): void
+    {
+        $actor = $this->superadmin();
+
+        $response = $this->actingAs($actor)
+            ->deleteJson(route('users.destroy', $actor));
+
+        $response->assertForbidden()
+            ->assertJsonPath('message', 'No puedes eliminar tu propia cuenta.');
+        $this->assertModelExists($actor);
+    }
 }
