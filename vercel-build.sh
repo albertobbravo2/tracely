@@ -21,7 +21,7 @@ curl -sS https://getcomposer.org/installer | php -- --install-dir=/tmp --quiet
 # Este PHP solo sirve para el build y artisan migrate: no hace falta que tenga
 # todas las extensiones que piden los paquetes (las tiene la función).
 php /tmp/composer.phar install --no-dev --no-scripts --no-interaction --prefer-dist --no-progress --ignore-platform-reqs
-
+php artisan package:discover --ansi
 npm run build
 
 if [ "${VERCEL_ENV:-}" != "production" ]; then
