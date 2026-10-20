@@ -24,8 +24,30 @@ php /tmp/composer.phar install --no-dev --no-scripts --no-interaction --prefer-d
 php artisan package:discover --ansi
 npm run build
 
+# Ejecutar migraciones solo en Preview de module-3.
+if [ "${VERCEL_ENV:-}" = "preview" ] && [ "${VERCEL_GIT_COMMIT_REF:-}" = "module-3" ]; then
+    echo "Verificando la conexión de Neon para pruebas..."
+
+    NEON_HOST=$(php -r '$u=getenv("DATABASE_URL_UNPOOLED") ?: getenv("DATABASE_URL"); echo parse_url($u, PHP_URL_HOST) ?: "";')
+
+    case "$NEON_HOST" in
+        ep-crimson-pine-bag89e32.*|ep-crimson-pine-bag89e32-pooler.*)
+            echo "Servidor Neon de pruebas confirmado."
+            ;;
+        *)
+            echo "ABORTADO: la conexión no corresponde al servidor Neon de pruebas esperado."
+            exit 1
+            ;;
+    esac
+
+    export DATABASE_URL="${DATABASE_URL_UNPOOLED:-$DATABASE_URL}"
+    php artisan migrate --force
+    exit 0
+fi
+
+# Los demás entornos de pruebas no ejecutan migraciones.
 if [ "${VERCEL_ENV:-}" != "production" ]; then
-    echo "VERCEL_ENV=${VERCEL_ENV:-desconocido}: no se ejecutan migraciones."
+    echo "Sin migraciones para este entorno."
     exit 0
 fi
 
