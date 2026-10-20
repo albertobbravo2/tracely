@@ -36,6 +36,12 @@ new class extends Component
             return;
         }
 
+        if ($response->status() === 429) {
+            $this->errorMessage = __('Demasiadas búsquedas seguidas. Espera un momento y reinténtalo.');
+
+            return;
+        }
+
         if ($response->status() === 404) {
             $this->errorMessage = __('No encontramos ningún envío con ese número de guía.');
 
@@ -61,13 +67,22 @@ new class extends Component
      * acuñamos un token de un minuto para que lo reconozca, y lo borramos en
      * `finally` para que no quede vivo si la conexión falla.
      *
+     * Para la API, además, la IP de esta petición es la del servidor. La del
+     * visitante (la de la petición de Livewire, que sí viene del navegador) va
+     * en una cabecera firmada, para que el límite de `shipments.show` cuente
+     * por visitante y no un único cupo para todos los anónimos.
+     *
      * Devuelve null si no se pudo conectar; el mensaje lo decide quien llama.
      */
     private function callApi(string $method, string $path): ?Response
     {
         $pending = Http::acceptJson()
             ->timeout(10)
-            ->baseUrl(config('services.internal_api.url'));
+            ->baseUrl(config('services.internal_api.url'))
+            ->withHeaders([
+                'X-Tracely-Internal' => config('services.internal_api.secret'),
+                'X-Tracely-Visitor-Ip' => request()->ip(),
+            ]);
 
         $token = auth()->user()?->createToken('searchfield', ['shipment:read'], now()->addMinute());
 

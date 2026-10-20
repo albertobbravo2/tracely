@@ -314,31 +314,38 @@ class UserFormTest extends TestCase
 
     public function test_el_borrado_llama_al_endpoint_del_usuario(): void
     {
+        $actor = $this->superadmin();
+        // Cualquier id menos el de quien borra: la cuenta propia no se borra.
+        $id = $actor->id + 1;
+
         Http::fake([
-            '*/api/users/7' => Http::response(status: 204),
+            "*/api/users/{$id}" => Http::response(status: 204),
             '*' => Http::response(['data' => [], 'current_page' => 1, 'last_page' => 1, 'total' => 0]),
         ]);
 
-        Livewire::actingAs($this->superadmin())
+        Livewire::actingAs($actor)
             ->test('backoffice.users')
-            ->call('confirmDelete', 7)
-            ->assertSet('deleting', 7)
+            ->call('confirmDelete', $id)
+            ->assertSet('deleting', $id)
             ->call('destroy')
             ->assertSet('deleting', null);
 
         Http::assertSent(fn (Request $request) => $request->method() === 'DELETE'
-            && str_ends_with($request->url(), '/api/users/7'));
+            && str_ends_with($request->url(), "/api/users/{$id}"));
     }
 
     public function test_el_modal_de_borrado_nombra_la_cuenta(): void
     {
+        $actor = $this->superadmin();
+        $id = $actor->id + 1;
+
         $this->fingirApi([
-            ['id' => 7, 'name' => 'Ana Agente', 'email' => 'ana@tracely.test', 'roles' => []],
+            ['id' => $id, 'name' => 'Ana Agente', 'email' => 'ana@tracely.test', 'roles' => []],
         ]);
 
-        Livewire::actingAs($this->superadmin())
+        Livewire::actingAs($actor)
             ->test('backoffice.users')
-            ->call('confirmDelete', 7)
+            ->call('confirmDelete', $id)
             // El modal tapa la fila desde la que se ha pulsado: sin el nombre,
             // confirmar un borrado irreversible es un acto de fe.
             ->assertSee('Se eliminará la cuenta de Ana Agente');
@@ -357,5 +364,38 @@ class UserFormTest extends TestCase
             // El rol viene en minúscula de la API; en pantalla se lee como un
             // nombre, no como un identificador.
             ->assertSee('Agente');
+    }
+
+    public function test_tu_propia_fila_no_lleva_el_boton_de_eliminar(): void
+    {
+        $yo = $this->superadmin();
+        $otro = $yo->id + 1;
+
+        $this->fingirApi([
+            ['id' => $yo->id, 'name' => 'Yo Mismo', 'email' => 'yo@tracely.test', 'roles' => [['name' => 'superadministrador']]],
+            ['id' => $otro, 'name' => 'Ana Agente', 'email' => 'ana@tracely.test', 'roles' => [['name' => 'agente']]],
+        ]);
+
+        Livewire::actingAs($yo)
+            ->test('backoffice.users')
+            ->assertSeeHtml("confirmDelete({$otro})")
+            ->assertDontSeeHtml("confirmDelete({$yo->id})")
+            // Editarse a uno mismo sí se puede.
+            ->assertSeeHtml("edit({$yo->id})");
+    }
+
+    public function test_pedir_el_borrado_de_tu_propia_cuenta_no_hace_nada(): void
+    {
+        $yo = $this->superadmin();
+        $this->fingirApi();
+
+        // Sin botón, pero el método se puede llamar igual desde el navegador.
+        Livewire::actingAs($yo)
+            ->test('backoffice.users')
+            ->call('confirmDelete', $yo->id)
+            ->assertSet('deleting', null)
+            ->call('destroy');
+
+        Http::assertNotSent(fn (Request $request) => $request->method() === 'DELETE');
     }
 }
