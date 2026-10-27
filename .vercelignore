@@ -1,0 +1,26 @@
+# Lo que no debe subir a Vercel. Un `vercel deploy` desde local no aplica
+# .gitignore, así que sin esto se subirían el .env con secretos, vendor/ y
+# public/hot (que haría que Laravel pidiese los assets al Vite local).
+# vendor/ y public/build se regeneran en el build remoto.
+.env
+.env.*
+!.env.example
+/vendor
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/public/fonts-manifest.dev.json
+/storage/*.key
+/storage/pail
+/storage/logs/*.log
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/testing/*
+/storage/framework/views/*.php
+/.phpunit.cache
+.phpunit.result.cache
+/.idea
+/.claude
+/tests
+UI.pen
