@@ -40,7 +40,7 @@ if [ "${VERCEL_ENV:-}" = "preview" ] && [ "${VERCEL_GIT_COMMIT_REF:-}" = "module
             ;;
     esac
 
-    export DATABASE_URL="${DATABASE_URL_UNPOOLED:-$DATABASE_URL}"
+    export DB_URL="${DATABASE_URL_UNPOOLED:-$DATABASE_URL}"
     php artisan migrate --force
     exit 0
 fi
