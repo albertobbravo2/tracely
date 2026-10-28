@@ -43,7 +43,26 @@ return [
         // apuntar el default a un bucket público expondría los documentos.
         // `serve` queda desactivado a propósito — se sirven por el controlador,
         // que sí pasa por el middleware de permisos.
-        'documents' => [
+        //
+        // Con DOCUMENTS_BUCKET definido van a un bucket privado de Cloudflare
+        // R2 (API compatible con S3): en Vercel el disco de la función es de
+        // solo lectura y /tmp no persiste ni se comparte entre instancias, así
+        // que un fichero local desaparece antes de que alguien lo descargue.
+        // Sin él (Sail, tests) siguen en disco local. Variables propias y no
+        // las AWS_* para que ningún otro disco acabe escribiendo en este bucket.
+        // `throw` en R2 para que una subida fallida no deje un Document sin
+        // fichero detrás.
+        'documents' => env('DOCUMENTS_BUCKET') ? [
+            'driver' => 's3',
+            'key' => env('DOCUMENTS_ACCESS_KEY_ID'),
+            'secret' => env('DOCUMENTS_SECRET_ACCESS_KEY'),
+            'region' => 'auto',
+            'bucket' => env('DOCUMENTS_BUCKET'),
+            'endpoint' => env('DOCUMENTS_ENDPOINT'),
+            'use_path_style_endpoint' => true,
+            'throw' => true,
+            'report' => false,
+        ] : [
             'driver' => 'local',
             'root' => storage_path('app/private/documents'),
             'serve' => false,
