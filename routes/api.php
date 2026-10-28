@@ -16,8 +16,9 @@ Route::get('shipments/{shipment}', [ShipmentController::class, 'show'])
     ->middleware('throttle:show-shipment')
     ->name('shipments.show');
 
-// El grupo autentica con sanctum; cada ruta solo declara el permiso que exige.
-Route::middleware('auth:sanctum')->group(function () {
+// El grupo autentica con sanctum y descarta a quien pertenezca a una empresa
+// desactivada; cada ruta solo declara el permiso que exige.
+Route::middleware(['auth:sanctum', 'company.active'])->group(function () {
 
     // SIN PERMISOS (Datos del propio usuario, no de otros)
     Route::get('users/shipments', [UserController::class, 'myshipments'])

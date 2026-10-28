@@ -11,7 +11,7 @@
     'bg-on-primary' => $inverse,
 ]) }}>
     <x-app-logo-icon @class([
-        'size-[17px] fill-current',
+        'size-[17px]',
         'text-on-primary' => ! $inverse,
         'text-primary' => $inverse,
     ]) />

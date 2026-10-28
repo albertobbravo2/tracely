@@ -76,6 +76,44 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * Roles que dan entrada al backoffice: los mismos que protegen el bloque
+     * `backoffice.` en routes/web.php.
+     *
+     * @var list<string>
+     */
+    public const BACKOFFICE_ROLES = ['agente', 'administrador', 'superadministrador'];
+
+    /**
+     * Si la empresa a la que pertenece esta cuenta sigue activa.
+     *
+     * Una cuenta sin empresa —los clientes finales, que se registran por la
+     * web y nunca llevan `company_id`— no tiene nada que desactivar, así que
+     * cuenta como activa. El superadministrador tampoco se ve afectado: es
+     * el único rol que puede reactivar una empresa, y si se bloqueara a sí
+     * mismo al desactivar la suya nadie podría deshacerlo.
+     */
+    public function belongsToActiveCompany(): bool
+    {
+        if ($this->hasRole('superadministrador')) {
+            return true;
+        }
+
+        return $this->company === null || $this->company->is_active;
+    }
+
+    /**
+     * Si esta cuenta puede entrar al backoffice.
+     *
+     * Dos condiciones: tener uno de los roles de empleado y que su empresa
+     * no esté desactivada. Desactivar una empresa deja fuera del backoffice
+     * a toda su plantilla de golpe, sin tocarle los roles.
+     */
+    public function canAccessBackoffice(): bool
+    {
+        return $this->hasAnyRole(self::BACKOFFICE_ROLES) && $this->belongsToActiveCompany();
+    }
+
+    /**
      * Get the user's initials
      */
     public function initials(): string

@@ -176,8 +176,14 @@ class UserController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(User $user): JsonResponse
+    public function destroy(Request $request, User $user): JsonResponse
     {
+        // Desde el backoffice nadie se borra a sí mismo: perdería el acceso en
+        // mitad de la sesión y, si es el único superadministrador, nadie podría
+        // volver a gestionar empresas. Darse de baja es cosa de Ajustes, que no
+        // pasa por esta ruta.
+        abort_if($request->user()?->is($user), 403, __('No puedes eliminar tu propia cuenta.'));
+
         $user->delete();
 
         return response()->json(status: 204);
