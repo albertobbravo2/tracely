@@ -61,6 +61,22 @@ if ($databaseUrl) {
 }
 unset($env, $databaseUrl, $parts, $endpoint, $password);
 
+// 5. En la función de Vercel todo el código vive en un disco de solo lectura;
+//    lo único escribible es /tmp. Blade y Livewire compilan las vistas en
+//    storage/framework/views con Filesystem::replace(), que llama a tempnam()
+//    en esa carpeta: al no poder escribir, PHP crea el fichero en /tmp con un
+//    aviso que Laravel convierte en ErrorException ("tempnam(): file created in
+//    the system's temporary directory", HTTP 500). Laravel admite mover todo
+//    storage/ con LARAVEL_STORAGE_PATH; creamos las carpetas porque
+//    config('view.compiled') hace realpath() y /tmp empieza vacío en cada
+//    arranque en frío.
+$storage = '/tmp/storage';
+foreach (['framework/views', 'framework/cache/data', 'framework/sessions', 'logs'] as $dir) {
+    is_dir("{$storage}/{$dir}") || mkdir("{$storage}/{$dir}", 0755, true);
+}
+$_ENV['LARAVEL_STORAGE_PATH'] = $_SERVER['LARAVEL_STORAGE_PATH'] = $storage;
+unset($storage, $dir);
+
 require __DIR__.'/../public/index.php';
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
